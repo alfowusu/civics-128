@@ -1,4 +1,4 @@
-const CACHE = "civics128-v10";
+const CACHE = "civics128-v11";
 const AUDIO_CACHE = "civics128-audio-v1"; // filled only when the user taps "Download audio for offline"
 const ASSETS = ["./", "index.html", "manifest.webmanifest", "icon-192.png", "icon-512.png", "apple-touch-icon.png", "audio/audio.json", "audio/clips.json"];
 self.addEventListener("install", e => {
