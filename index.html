@@ -694,7 +694,26 @@ function variantHit(inTok,v,lenient,single,qual){const vt=tokens(v);if(!vt.lengt
   const need=n<=2?n:n===3?2:n===4?3:Math.ceil(n*.5);if(hits<need)return false;
   return precise();}
 function acceptable(q){if(q.vary){const v=mineVal(q.n);return v?v.split(/\s+or\s+|\s*;\s*|\s*\/\s*/i).map(x=>x.trim()).filter(Boolean):[];}return q.a;}
-function matchQ(q,input){const answers=acceptable(q);const raw=tokens(input);if(!raw.length||!answers.length)return{ok:false,hits:[]};
+// Per-question "reject if the answer contains…" terms for names that are easy to confuse with an accepted answer.
+// A term is ignored when it is part of an accepted answer itself (so it can never block a correct answer).
+const BLOCK={105:["theodore","theodor","teddy","teddie","t roosevelt","tr","t r","eleanor","alice roosevelt","door roosevelt"],
+  78:["davis"],83:["dolley","dolly","lewis hamilton","linda hamilton","jay z","jayz"],
+  119:["state","booker"]};
+// Same idea for answers that vary (officials, state capital): keyed by the surname/word in the saved answer.
+const VBLOCK={trump:["jr","junior","eric","melania","ivanka","barron","tiffany","fred","lara"],vance:["usha"],
+  roberts:["julia","emma","owen","eric","doris","pat","nora"],
+  johnson:["andrew","lyndon","lbj","boris","dwayne","magic","jack","jimmie","ron","gary","andy","samuel"],
+  columbus:["christopher","chris"],dewine:["kevin"],husted:[],moreno:[],balderson:[]};
+// Extra spellings that mean the accepted answer (matching only; displayed answers are unchanged).
+const ALIAS={105:{fdr:"Franklin Roosevelt"}};
+function blockTerms(q,answers){const aT=new Set();answers.forEach(a=>variants(a).forEach(v=>tokens(v).forEach(t=>aT.add(t))));
+  let terms=(BLOCK[q.n]||[]).slice();if(q.vary)Object.keys(VBLOCK).forEach(k=>{if(aT.has(tokens(k)[0]))terms=terms.concat(VBLOCK[k]);});
+  return terms.map(t=>tokens(t)).filter(tt=>tt.length&&!tt.every(x=>aT.has(x)));}
+function hasBlocked(q,answers,inTok){const s=" "+inTok.join(" ")+" ";
+  return blockTerms(q,answers).some(tt=>tt.length>1?s.includes(" "+tt.join(" ")+" "):inTok.some(x=>x===tt[0]||(tt[0].length>=5&&feq(x,tt[0]))));}
+function matchQ(q,input){const answers=acceptable(q);let raw=tokens(input);if(!raw.length||!answers.length)return{ok:false,hits:[]};
+  if(hasBlocked(q,answers,raw))return{ok:false,hits:[],blocked:true};
+  const al=ALIAS[q.n];if(al){Object.keys(al).forEach(k=>{input=String(input).replace(new RegExp("\\b"+k.split("").join("\\.?\\s?")+"\\b\\.?","gi"),al[k]);});raw=tokens(input);}
   const single=Math.min(q.need,answers.length)===1;
   // Full-sentence answers: also try the input without carrier phrases, and without words that just echo the question.
   const qT=new Set(tokens(q.q));const aT=new Set();answers.forEach(a=>variants(a).forEach(v=>tokens(v).forEach(t=>aT.add(t))));
