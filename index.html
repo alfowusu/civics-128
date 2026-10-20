@@ -122,6 +122,17 @@ select{font:inherit;padding:8px;border-radius:10px;border:2px solid #dee2e6;min-
 .small{font-size:.85rem;color:var(--mute)}
 a{color:var(--blue)}
 .selfcheck{display:flex;gap:10px;margin-top:12px}
+.player{position:sticky;top:0;z-index:20;background:linear-gradient(135deg,#2b8a3e,#0ca678);color:#fff;border-radius:16px;padding:10px 12px;margin:8px 0 10px;box-shadow:0 6px 16px #0003}
+.plrow{gap:8px;flex-wrap:nowrap}
+.plb{background:#ffffff2e;color:#fff;min-width:48px;height:48px;font-size:1.25rem}
+.plb.big{min-width:64px;background:#fff;color:#2b8a3e}
+.player select{min-height:44px;margin-left:auto}
+.plstatus{font-size:.85rem;margin:6px 2px 2px;opacity:.95}
+.plopts summary{cursor:pointer;font-size:.85rem;min-height:36px;display:flex;align-items:center}
+.plgrid{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;font-size:.9rem}
+.plgrid select{min-height:40px;margin-left:6px;color:var(--ink)}
+.list details.reading{outline:3px solid #0ca678;background:#ebfbee;box-shadow:0 4px 14px #0ca67844}
+.playall{align-self:flex-start;margin-top:8px;background:#fff;color:#2b8a3e;font-weight:800;border-radius:999px;padding:8px 14px;font-size:.9rem;min-height:40px;display:inline-flex;align-items:center}
 @media (max-width:380px){.modes{grid-template-columns:1fr}.qtext{font-size:1.15rem}}
 .typeform{display:flex;gap:8px;margin-top:14px}
 .typein{flex:1;min-width:0;font:inherit;font-size:1.1rem;padding:14px;border:2.5px solid #dee2e6;border-radius:14px;min-height:56px}
@@ -164,7 +175,7 @@ a{color:var(--blue)}
     <button class="mode m2" data-go="quiz"><span class="e">🎯</span><b>Quiz</b><small>Tap, type, or speak your answer. Instant feedback</small></button>
     <button class="mode m3" data-go="mock"><span class="e">🎤</span><b>Mock interview</b><small>Real-test rules: up to 20 questions, 12 to pass</small></button>
     <button class="mode m4" data-go="review"><span class="e">🔁</span><b>Review my misses</b><small id="missCount">0 to review</small></button>
-    <button class="mode m5" data-go="list"><span class="e">📖</span><b>Study list</b><small>All 128 with every accepted answer</small></button>
+    <button class="mode m5" data-go="list"><span class="e">📖</span><b>Study list</b><small>All 128 with every accepted answer</small><span class="playall" data-playall role="button" aria-label="Play all questions aloud">▶ Play all</span></button>
     <button class="mode m6" data-go="mine"><span class="e">✏️</span><b>My local answers</b><small id="mineCount">Senators, rep, governor…</small></button>
   </div>
   <h2>Topics <span class="small">(applies to flashcards, quiz, review &amp; study list)</span></h2>
@@ -224,6 +235,7 @@ a{color:var(--blue)}
 <!-- LIST -->
 <section class="view" id="v-list">
   <div class="topline"><button class="back" data-go="home">← Home</button><div class="meta" id="lMeta"></div></div>
+  <div id="plHost"></div>
   <p class="small"><span class="lvl" style="background:#dee2e6"></span>new <span class="lvl" style="background:#ff8787"></span>missed <span class="lvl" style="background:#ffd43b"></span>learning <span class="lvl" style="background:#51cf66"></span>mastered</p>
   <div class="list" id="listArea"></div>
 </section>
@@ -482,10 +494,10 @@ function makeOptions(q){
 // ---------- router ----------
 let timerH=0;
 function stopTimer(){clearInterval(timerH);timerH=0;}
-function go(v){stopTimer();if(typeof stopListen==="function")stopListen();A=null;if(canSpeak)speechSynthesis.cancel();document.querySelectorAll(".view").forEach(x=>x.classList.remove("on"));
+function go(v){stopTimer();if(typeof plStop==="function"&&PL.playing)plStop();if(typeof stopListen==="function")stopListen();A=null;if(canSpeak)speechSynthesis.cancel();document.querySelectorAll(".view").forEach(x=>x.classList.remove("on"));
   if(v==="flash")startFlash();else if(v==="quiz")startQuiz(false);else if(v==="review")startQuiz(true);else if(v==="mock")mockIntro();else if(v==="list")renderList();else if(v==="mine")renderMine();else{v="home";updateHome();chips();}
   $("#v-"+(v==="review"?"quiz":v)).classList.add("on");scrollTo(0,0);location.hash=v==="home"?"":v;}
-document.addEventListener("click",e=>{const b=e.target.closest("[data-go]");if(b)go(b.dataset.go);});
+document.addEventListener("click",e=>{const b=e.target.closest("[data-go]");if(!b)return;go(b.dataset.go);if(e.target.closest("[data-playall]")&&b.dataset.go==="list")plPlayFrom();});
 $("#homeBtn").onclick=()=>go("home");
 $("#resetBtn").onclick=()=>{if(confirm("Reset all progress (your local answers are kept)?")){const mine=S.mine;S=blank();S.mine=mine;save();refreshStats();go("home");}};
 
@@ -690,7 +702,72 @@ function endMock(){A=null;const pass=M.right>=M.passAt;const asked=M.res.length;
 // ---------- study list ----------
 function renderList(){const L=pool();$("#lMeta").textContent=`${filterLabel()} · ${L.length} questions`;let cat="";
   $("#listArea").innerHTML=L.map(q=>{const p=S.p[q.n];const col=!p||!p.seen?"#dee2e6":p.miss?"#ff8787":p.box>=MASTER_BOX?"#51cf66":"#ffd43b";const h=q.category!==cat?`<h2>${esc(q.section)} · ${esc(CAT_SHORT[q.category]||q.category)}</h2>`:"";cat=q.category;
-    return `${h}<details><summary><span class="lvl" style="background:${col}"></span>${q.n}. ${esc(q.q)} ${q.star?"<span class='pill star'>★</span>":""}${q.vary?"<span class='pill vary'>varies</span>":""}</summary><div class="ans">${q.vary&&mineVal(q.n)?`${savedLine(q,"Your answer")}`:""}${ansList(q)}</div>${mineBox(q)}${canSpeak?`<button class="btn ghost" style="margin-top:8px" onclick="say(BYN[${q.n}].q+'. '+BYN[${q.n}].a.join('. '))">🔊 Read aloud</button>`:""}</details>`;}).join("");}
+    return `${h}<details data-n="${q.n}"><summary><span class="lvl" style="background:${col}"></span>${q.n}. ${esc(q.q)} ${q.star?"<span class='pill star'>★</span>":""}${q.vary?"<span class='pill vary'>varies</span>":""}</summary><div class="ans">${q.vary&&mineVal(q.n)?`${savedLine(q,"Your answer")}`:""}${ansList(q)}</div>${mineBox(q)}${canSpeak?`<div class="row" style="margin-top:8px"><button class="btn ghost" data-playfrom="${q.n}">▶ Play from here</button><button class="btn ghost" onclick="plStop();say(plTexts(BYN[${q.n}]).join(' '))">🔊 Read this one</button></div>`:""}</details>`;}).join("");
+  $("#plHost").innerHTML=plBar();plWire();plStop();plBuild();plUI();const pq=PL.list[PL.idx];if(pq&&plOpts().pos){$("#plStatus").textContent=`Resume from Question ${pq.n} (${PL.idx+1}/${PL.list.length}) — press ▶`;}}
+// ---------- Study list: continuous "Play all" read-aloud ----------
+const PL={list:[],idx:0,playing:false,paused:false,token:0,gapT:0,keep:0,dog:0,cur:null};
+function plOpts(){S.play=Object.assign({pos:0,rate:1,answers:true,gap:2,mode:"all",loop:true},S.play||{});return S.play;}
+const isIOS=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
+function speakClean(t){return String(t).replace(/\s*\[[^\]]*\]/g,"").replace(/[“”]/g,"").replace(/\bU\.S\.(?=\W|$)/g,"U.S.").trim();}
+function plAnswers(q){const o=plOpts();let ans;
+  if(q.vary){const v=mineVal(q.n);ans=v?acceptable(q):q.a;}else ans=q.a.map(display);
+  if(o.mode==="one"){const k=Math.max(1,Math.min(q.need||1,ans.length));const a=ans.slice(0,k);return a.length>1?a.slice(0,-1).join(", ")+", and "+a[a.length-1]:a[0];}
+  return ans.join(", or ");}
+function plTexts(q){const t=[`Question ${q.n}. ${speakClean(q.q)}`];if(plOpts().answers)t.push(`Answer: ${speakClean(plAnswers(q))}.`);return t;}
+function plBuild(){PL.list=pool();const o=plOpts();const i=PL.list.findIndex(q=>q.n===o.pos);PL.idx=i>=0?i:0;}
+function plUI(){const bar=$("#player");if(!bar)return;const q=PL.list[PL.idx];
+  $("#plPlay").textContent=PL.playing&&!PL.paused?"⏸":"▶";$("#plPlay").setAttribute("aria-label",PL.playing&&!PL.paused?"Pause":"Play");
+  $("#plStatus").textContent=!canSpeak?"Read-aloud isn’t supported in this browser.":q?`${PL.playing?(PL.paused?"Paused":"Reading"):"Ready"} · ${PL.idx+1}/${PL.list.length} · Question ${q.n}`:"No questions in this filter";
+  document.querySelectorAll("#listArea details.reading").forEach(d=>{if(!q||+d.dataset.n!==q.n)d.classList.remove("reading");});}
+function plHighlight(scroll){const q=PL.list[PL.idx];if(!q)return;const d=document.querySelector(`#listArea details[data-n="${q.n}"]`);if(!d)return;
+  d.classList.add("reading");d.open=true;if(scroll){const y=d.getBoundingClientRect().top+scrollY-($("#player").offsetHeight+16);scrollTo({top:Math.max(0,y),behavior:"smooth"});}}
+function plMedia(q){try{if(!("mediaSession" in navigator)||!q)return;if(window.MediaMetadata)navigator.mediaSession.metadata=new MediaMetadata({title:`Question ${q.n}`,artist:"Civics 128",album:CAT_SHORT[q.category]||q.category});
+  navigator.mediaSession.playbackState=PL.playing&&!PL.paused?"playing":"paused";}catch(e){}}
+function plSpeak(text,done){const tok=PL.token;let fired=false;const fin=()=>{if(fired||tok!==PL.token)return;fired=true;PL.cur=null;done();};
+  let u;try{u=new SpeechSynthesisUtterance(text);}catch(e){plStop("Read-aloud isn’t available here.");return;}
+  u.lang="en-US";u.rate=plOpts().rate;u.onend=fin;u.onerror=ev=>{if(ev&&(ev.error==="interrupted"||ev.error==="canceled"))return;fin();};
+  PL.cur={fin,start:Date.now(),len:text.length};
+  try{speechSynthesis.speak(u);}catch(e){fin();}}
+function plItem(){if(!PL.playing||PL.paused)return;const q=PL.list[PL.idx];if(!q){plStop();return;}
+  const o=plOpts();o.pos=q.n;save();plUI();plHighlight(true);plMedia(q);
+  const texts=plTexts(q);let i=0;const tok=PL.token;
+  const step=()=>{if(tok!==PL.token)return;if(i<texts.length){const t=texts[i++];plSpeak(t,()=>{if(i<texts.length)PL.gapT=setTimeout(step,350);else step();});}
+    else PL.gapT=setTimeout(()=>{if(tok!==PL.token)return;plAdvance(1,true);},plOpts().gap*1000);};
+  step();}
+function plAdvance(d,auto){PL.token++;clearTimeout(PL.gapT);if(canSpeak)try{speechSynthesis.cancel();}catch(e){}
+  let n=PL.idx+d;if(n>=PL.list.length){if(auto&&!plOpts().loop){plStop("Finished all questions 🎉");PL.idx=PL.list.length-1;plOpts().pos=0;save();return;}n=0;}if(n<0)n=plOpts().loop?PL.list.length-1:0;
+  PL.idx=n;plOpts().pos=PL.list[n].n;save();if(PL.playing&&!PL.paused)plItem();else{plUI();plHighlight(true);}}
+function plTimers(on){clearInterval(PL.keep);clearInterval(PL.dog);if(!on)return;
+  // Keep-alive: Safari/Chrome can silently pause or drop long speech; nudge it and recover if onend never fires.
+  PL.keep=setInterval(()=>{if(!PL.playing||PL.paused||!canSpeak)return;try{if(speechSynthesis.paused)speechSynthesis.resume();else if(!isIOS&&speechSynthesis.speaking){speechSynthesis.pause();speechSynthesis.resume();}}catch(e){}},10000);
+  PL.dog=setInterval(()=>{if(!PL.playing||PL.paused||!PL.cur)return;const c=PL.cur;const limit=4000+c.len*120/plOpts().rate;
+    if(!speechSynthesis.speaking&&!speechSynthesis.pending&&Date.now()-c.start>1500)c.fin();else if(Date.now()-c.start>limit)c.fin();},1000);}
+function plPlayFrom(idx){if(!canSpeak){plUI();return;}if(!PL.list.length)plBuild();if(!PL.list.length)return;
+  PL.token++;clearTimeout(PL.gapT);try{speechSynthesis.cancel();}catch(e){}
+  if(typeof idx==="number")PL.idx=Math.max(0,Math.min(idx,PL.list.length-1));PL.playing=true;PL.paused=false;plTimers(true);plItem();}
+function plToggle(){if(!canSpeak)return;if(!PL.playing)return plPlayFrom();if(PL.paused){PL.paused=false;plPlayFrom(PL.idx);}else{PL.paused=true;PL.token++;clearTimeout(PL.gapT);try{speechSynthesis.cancel();}catch(e){}plUI();plMedia(PL.list[PL.idx]);}}
+function plStop(msg){PL.token++;clearTimeout(PL.gapT);plTimers(false);PL.playing=false;PL.paused=false;PL.cur=null;if(canSpeak)try{speechSynthesis.cancel();}catch(e){}
+  plUI();if(msg)$("#plStatus").textContent=msg;document.querySelectorAll("#listArea details.reading").forEach(d=>d.classList.remove("reading"));plMedia(null);}
+function plBar(){const o=plOpts();return `<div id="player" class="player"><div class="row plrow">
+  <button class="plb" id="plPrev" aria-label="Previous">⏮</button><button class="plb big" id="plPlay" aria-label="Play">▶</button><button class="plb" id="plNext" aria-label="Next">⏭</button><button class="plb" id="plStop" aria-label="Stop">⏹</button>
+  <select id="plRate" aria-label="Speed">${[.75,1,1.25,1.5].map(r=>`<option value="${r}" ${o.rate===r?"selected":""}>${r}×</option>`).join("")}</select></div>
+  <div class="plstatus" id="plStatus"></div>
+  <details class="plopts"><summary>⚙️ Options</summary><div class="plgrid">
+   <label class="switch"><input type="checkbox" id="plAns" ${o.answers?"checked":""}> Read answers</label>
+   <label class="switch"><input type="checkbox" id="plLoop" ${o.loop?"checked":""}> 🔁 Loop</label>
+   <label>Answers <select id="plMode"><option value="all" ${o.mode==="all"?"selected":""}>All accepted</option><option value="one" ${o.mode==="one"?"selected":""}>Just one</option></select></label>
+   <label>Pause <select id="plGap">${[1,2,3].map(g=>`<option value="${g}" ${o.gap===g?"selected":""}>${g} s</option>`).join("")}</select></label></div></details></div>`;}
+function plWire(){$("#plPlay").onclick=plToggle;$("#plNext").onclick=()=>plAdvance(1,false);$("#plPrev").onclick=()=>plAdvance(-1,false);$("#plStop").onclick=()=>plStop();
+  $("#plRate").onchange=e=>{plOpts().rate=+e.target.value;save();};$("#plAns").onchange=e=>{plOpts().answers=e.target.checked;save();};
+  $("#plLoop").onchange=e=>{plOpts().loop=e.target.checked;save();};$("#plMode").onchange=e=>{plOpts().mode=e.target.value;save();};$("#plGap").onchange=e=>{plOpts().gap=+e.target.value;save();};
+  if(!canSpeak)["#plPrev","#plPlay","#plNext","#plStop","#plRate"].forEach(s=>$(s).disabled=true);
+  try{if("mediaSession" in navigator){const m=navigator.mediaSession;m.setActionHandler("play",()=>{if(!PL.playing||PL.paused)plToggle();});m.setActionHandler("pause",()=>{if(PL.playing&&!PL.paused)plToggle();});
+    m.setActionHandler("nexttrack",()=>plAdvance(1,false));m.setActionHandler("previoustrack",()=>plAdvance(-1,false));m.setActionHandler("stop",()=>plStop());}}catch(e){}}
+// tapping an item: ▶ button always plays from there; tapping the title plays from there while the player is active
+document.addEventListener("click",e=>{const pb=e.target.closest("[data-playfrom]");const sm=e.target.closest("#listArea summary");
+  if(!pb&&!(sm&&PL.playing))return;const n=+(pb?pb.dataset.playfrom:sm.parentNode.dataset.n);const i=PL.list.findIndex(q=>q.n===n);if(i<0)return;
+  if(pb||sm){e.preventDefault();}const d=document.querySelector(`#listArea details[data-n="${n}"]`);if(d)d.open=true;plPlayFrom(i);});
+
 function renderMine(){$("#mineArea").innerHTML=Object.keys(VARY).map(n=>{const q=BYN[n];return `<div class="panel"><div class="qnum">Question ${n}</div><b>${esc(q.q)}</b><div class="note">USCIS: ${esc(q.a.join(" "))}</div>${mineBox(q)}</div>`;}).join("");}
 
 // ---------- keyboard ----------
