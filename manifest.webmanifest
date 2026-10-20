@@ -1,0 +1,17 @@
+{
+  "name": "Civics 128",
+  "short_name": "Civics 128",
+  "description": "Practice the 128 U.S. citizenship civics questions (2025 version): flashcards, quiz, and mock interview.",
+  "id": "./",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f1f3ff",
+  "theme_color": "#3b5bdb",
+  "icons": [
+    {"src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ]
+}
