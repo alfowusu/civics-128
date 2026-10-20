@@ -1,6 +1,6 @@
-const CACHE = "civics128-v7";
+const CACHE = "civics128-v8";
 const AUDIO_CACHE = "civics128-audio-v1"; // filled only when the user taps "Download audio for offline"
-const ASSETS = ["./", "index.html", "manifest.webmanifest", "icon-192.png", "icon-512.png", "apple-touch-icon.png", "audio/audio.json"];
+const ASSETS = ["./", "index.html", "manifest.webmanifest", "icon-192.png", "icon-512.png", "apple-touch-icon.png", "audio/audio.json", "audio/clips.json"];
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));
 });
@@ -24,12 +24,19 @@ self.addEventListener("fetch", e => {
   const req = e.request;
   const url = new URL(req.url);
   if (req.method !== "GET" || url.origin !== location.origin) return;
+  if (url.pathname.includes("/audio/clips/") && url.pathname.endsWith(".mp3")) {
+    // Short voice clips (a few KB each): cache on first play so they also work offline later.
+    const key = url.origin + url.pathname;
+    e.respondWith(caches.open(AUDIO_CACHE).then(c => c.match(key).then(hit => hit ? ranged(hit, req) :
+      fetch(key).then(res => { if (res.ok && res.status === 200) { c.put(key, res.clone()); return ranged(res, req); } return res; }))));
+    return;
+  }
   if (url.pathname.endsWith(".mp3")) {
     // MP3s are NOT cached automatically: use the offline copy if the user downloaded it, else go to the network.
     e.respondWith(caches.open(AUDIO_CACHE).then(c => c.match(url.origin + url.pathname)).then(hit => hit ? ranged(hit, req) : fetch(req)));
     return;
   }
-  if (url.pathname.endsWith("/audio/audio.json")) {
+  if (url.pathname.endsWith("/audio/audio.json") || url.pathname.endsWith("/audio/clips.json")) {
     e.respondWith(fetch(req).then(res => { if (res.ok) { const copy = res.clone(); caches.open(CACHE).then(c => c.put(req, copy)); } return res; })
       .catch(() => caches.match(req, { ignoreSearch: true })));
     return;
