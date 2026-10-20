@@ -20,4 +20,6 @@ Pre-recorded MP3s of all 128 questions with every accepted answer, read in order
 
 Format: mono, 48 kbps, 24 kHz, with ID3 chapters. The voice is synthetic (Microsoft Edge neural TTS, en-US-JennyNeural). The service worker does not precache the MP3s. Use **Download audio for offline** to save them (about 31 MB).
 
+**Big ▶ Play all / ↺ Start over buttons** are at the top of the home screen and the Study list. They play the recorded audio, and fall back to the device voice only if the audio can't load. ⏮ from the first question (or within the first 3 seconds of it) goes back to 0:00, including the intro. ↺ restarts from the beginning and resets the saved position. Every MP3 segment (intro, category announcements, questions, answers) uses the same voice, en-US-JennyNeural at -5% rate (see `voice`/`rate` in `audio/audio.json`). Each track also lists chapters, starting with an Intro chapter at 0:00.
+
 The local answers in the audio (Ohio senators, OH-12 representative, governor, capital) are for Athens, OH as of Oct 20, 2026. Regenerate the audio after the Nov 3, 2026 election.
