@@ -231,7 +231,7 @@ a{color:var(--blue)}
 <!-- MINE -->
 <section class="view" id="v-mine">
   <div class="topline"><button class="back" data-go="home">← Home</button><div class="meta">Saved on this device</div></div>
-  <div class="panel small">These answers depend on where you live or who is in office at the time of your interview. The USCIS document doesn’t give one answer for them, so type in yours. Look them up at senate.gov, house.gov, usa.gov/states-and-territories, and <b>uscis.gov/citizenship/testupdates</b>.</div>
+  <div class="panel small">These answers depend on where you live or who is in office at the time of your interview. The USCIS document doesn’t give one answer for them, so type in yours. Look them up at senate.gov, house.gov, usa.gov/states-and-territories, and <b>uscis.gov/citizenship/testupdates</b>.<br><br>📍 <b>Pre-filled for Athens, Ohio (ZIP 45701).</b> Verified Oct 20, 2026. Ohio elects a new governor, a U.S. senator (special election for Jon Husted’s seat) and its U.S. representatives on Nov 3, 2026, and the winners take office in January 2027. Check these again after the election and before your interview. Type over any answer to change it.</div>
   <div id="mineArea"></div>
 </section>
 </div>
@@ -251,6 +251,12 @@ const VARY = {
   39:{kind:"office",label:"Vice President now",look:"uscis.gov/citizenship/testupdates"},
   57:{kind:"office",label:"Chief Justice now",look:"uscis.gov/citizenship/testupdates"}
 };
+// Default local answers for Athens, OH (ZIP 45701). User-typed values (localStorage) override these.
+const LOCAL_NOTE="Set for Athens, OH — verified Oct 20, 2026; check after the Nov 3 election";
+const DEFAULT_MINE={23:"Bernie Moreno or Jon Husted",29:"Troy Balderson",61:"Mike DeWine",62:"Columbus",30:"Mike Johnson",38:"Donald J. Trump",39:"JD Vance",57:"John G. Roberts, Jr."};
+function mineVal(n){const v=S.mine[n];return (v!==undefined&&v!==null&&String(v).trim()!=="")?String(v).trim():(DEFAULT_MINE[n]||"");}
+function savedLine(q,label){return `<p><b>${label}:</b> ${esc(mineVal(q.n))}</p>${mineIsDefault(q.n)?`<div class="note">📍 ${esc(LOCAL_NOTE)}</div>`:""}`;}
+function mineIsDefault(n){const v=S.mine[n];return !(v!==undefined&&v!==null&&String(v).trim()!=="")&&!!DEFAULT_MINE[n];}
 const NUMWORD={one:1,two:2,three:3,four:4,five:5};
 DATA.forEach(q=>{
   const m=q.q.match(/(?:Name|What are|Describe) (one|two|three|five)\b/i);
@@ -286,8 +292,9 @@ const pick=a=>a[Math.floor(Math.random()*a.length)];
 function norm(s){return s.toLowerCase().replace(/\[[^\]]*\]/g,"").replace(/\([^)]*\)/g,"").replace(/[“”"'’.,]/g,"").replace(/\b(the|a|an)\b/g,"").split(/\s+/).filter(Boolean).map(w=>w.replace(/s$/,"")).join(" ");}
 function pills(q){let h=`<span class="pill">${esc(CAT_SHORT[q.category]||q.category)}</span>`;if(q.star)h+=`<span class="pill star">★ 65/20</span>`;if(q.vary)h+=`<span class="pill vary">${q.vary.kind==="local"?"📍 Answers vary":"🏛️ Changes with elections"}</span>`;return h;}
 function ansList(q,hi){return `<ul>${q.a.map(a=>`<li class="${hi&&(hi.includes(a)||hi.includes(display(a)))?"mine":""}">${esc(a)}</li>`).join("")}</ul>${q.note?`<div class="note">${esc(q.note)}</div>`:""}${q.need>1?`<div class="note">👉 On the test, give <b>${q.need}</b> of these.</div>`:""}`;}
-function mineBox(q){if(!q.vary)return"";const v=S.mine[q.n]||"";return `<div class="mine-box" onclick="event.stopPropagation()"><label>✏️ Answers vary — look up yours (${esc(q.vary.look)})</label><input data-mine="${q.n}" value="${esc(v)}" placeholder="Type your answer…" autocomplete="off"><div class="saved"></div></div>`;}
-document.addEventListener("input",e=>{const n=e.target.dataset&&e.target.dataset.mine;if(!n)return;S.mine[n]=e.target.value.trim();save();const s=e.target.nextElementSibling;if(s){s.textContent="Saved ✓";clearTimeout(s._t);s._t=setTimeout(()=>s.textContent="",1200);}document.querySelectorAll(`[data-mine="${n}"]`).forEach(i=>{if(i!==e.target)i.value=e.target.value;});updateHome();});
+function mineBox(q){if(!q.vary)return"";const v=mineVal(q.n);const isDef=mineIsDefault(q.n);return `<div class="mine-box" onclick="event.stopPropagation()"><label>✏️ Answers vary — look up yours (${esc(q.vary.look)})</label><input data-mine="${q.n}" value="${esc(v)}" placeholder="Type your answer…" autocomplete="off"><div class="saved"></div><div class="note mine-note" ${isDef?"":"hidden"}>📍 ${esc(LOCAL_NOTE)}</div>${DEFAULT_MINE[q.n]?`<button class="link mine-reset" data-mreset="${q.n}" onclick="resetMine(${q.n})" ${isDef?"hidden":""}>↺ Use the Athens, OH answer (${esc(DEFAULT_MINE[q.n])})</button>`:""}</div>`;}
+function resetMine(n){delete S.mine[n];save();document.querySelectorAll(`[data-mine="${n}"]`).forEach(i=>{i.value=DEFAULT_MINE[n];const box=i.closest(".mine-box");box.querySelector(".mine-note").hidden=false;box.querySelector(".mine-reset").hidden=true;});updateHome();}
+document.addEventListener("input",e=>{const n=e.target.dataset&&e.target.dataset.mine;if(!n)return;S.mine[n]=e.target.value.trim();save();{const box=e.target.closest(".mine-box");if(box){const d=mineIsDefault(n);const nt=box.querySelector(".mine-note");if(nt)nt.hidden=!(d&&e.target.value.trim()===DEFAULT_MINE[n]);const rb=box.querySelector(".mine-reset");if(rb)rb.hidden=d;}}const s=e.target.nextElementSibling;if(s){s.textContent="Saved ✓";clearTimeout(s._t);s._t=setTimeout(()=>s.textContent="",1200);}document.querySelectorAll(`[data-mine="${n}"]`).forEach(i=>{if(i!==e.target)i.value=e.target.value;});updateHome();});
 
 // ---------- speech ----------
 const canSpeak="speechSynthesis" in window;
@@ -307,7 +314,7 @@ function buzz(ms){try{navigator.vibrate&&navigator.vibrate(ms);}catch(e){}}
 // ---------- stats / home ----------
 function refreshStats(){const m=DATA.filter(q=>mastered(q.n)).length;$("#sMast").textContent=m;$("#sStreak").textContent=S.streak;$("#sXp").textContent=S.xp;$("#sDays").textContent=S.days;$("#mBar").style.width=(m/128*100)+"%";}
 function misses(){return DATA.filter(q=>S.p[q.n]&&S.p[q.n].miss);}
-function updateHome(){const mc=misses().length;$("#missCount").textContent=mc?`${mc} question${mc>1?"s":""} to review`:"Nothing to review yet 🎉";const filled=Object.keys(VARY).filter(n=>S.mine[n]).length;$("#mineCount").textContent=`${filled}/8 filled in · senators, governor…`;
+function updateHome(){const mc=misses().length;$("#missCount").textContent=mc?`${mc} question${mc>1?"s":""} to review`:"Nothing to review yet 🎉";const filled=Object.keys(VARY).filter(n=>mineVal(n)).length;$("#mineCount").textContent=`${filled}/8 set · Athens, OH`;
   const seen=DATA.filter(q=>S.p[q.n]&&S.p[q.n].seen).length;$("#dueInfo").textContent=`You’ve practiced ${seen}/128 questions. Best streak: ${S.best}.`;}
 function chips(){const box=$("#catChips");box.innerHTML=`<button class="chip ${!S.cats.length&&!S.star?"on":""}" data-cat="__all">All 128</button>`+CATS.map(c=>`<button class="chip ${S.cats.includes(c)?"on":""}" data-cat="${esc(c)}">${esc(CAT_SHORT[c]||c)} <span class="small">${DATA.filter(q=>q.category===c).length}</span></button>`).join("")+`<button class="chip star ${S.star?"on":""}" data-cat="__star">★ 65/20 only <span class="small">20</span></button>`;}
 $("#catChips").onclick=e=>{const b=e.target.closest(".chip");if(!b)return;const c=b.dataset.cat;if(c==="__all"){S.cats=[];S.star=false;}else if(c==="__star"){S.star=!S.star;}else{S.cats=S.cats.includes(c)?S.cats.filter(x=>x!==c):[...S.cats,c];}save();chips();};
@@ -489,7 +496,7 @@ function nextFlash(){const fc=$("#fc");fc.classList.remove("flipped");fq=nextQ(f
   $("#fMeta").textContent=`${filterLabel()} · ${fList.filter(x=>mastered(x.n)).length}/${fList.length} mastered`;
   setTimeout(()=>{
   $("#fFront").innerHTML=`${speakBtn(q)}<div class="qnum">Question ${q.n}</div><div>${pills(q)}</div><div class="qtext">${esc(q.q)}</div><div class="hint">👆 Tap to see the answer</div>`;
-  $("#fBack").innerHTML=`<div class="qnum">Question ${q.n} · answer${q.a.length>1?"s":""}</div><div class="small" style="margin:4px 0 6px">${esc(q.q)}</div><div class="ans">${q.vary&&S.mine[q.n]?`<p><b>Your answer:</b> ${esc(S.mine[q.n])}</p>`:""}${ansList(q)}</div>${mineBox(q)}<div class="hint">Tap to flip back</div>`;},150);
+  $("#fBack").innerHTML=`<div class="qnum">Question ${q.n} · answer${q.a.length>1?"s":""}</div><div class="small" style="margin:4px 0 6px">${esc(q.q)}</div><div class="ans">${q.vary&&mineVal(q.n)?`${savedLine(q,"Your answer")}`:""}${ansList(q)}</div>${mineBox(q)}<div class="hint">Tap to flip back</div>`;},150);
   autoSay(q);}
 $("#fc").onclick=e=>{if(e.target.closest("input,button"))return;$("#fc").classList.toggle("flipped");};
 function flashAnswer(ok){if(!fq)return;record(fq.n,ok,{el:$("#fYes")});if(ok){buzz(20);}else buzz([30,40,30]);nextFlash();}
@@ -533,10 +540,11 @@ function variantHit(inTok,v,lenient,single){const vt=tokens(v);if(!vt.length)ret
   const kw=kwOf(vt);
   const numKw=kw.filter(w=>/\d/.test(w));if(numKw.length&&inTok.some(t=>/\d/.test(t))&&numKw.some(w=>!inTok.includes(w)))return false;
   const hits=kw.filter(w=>inTok.some(t=>feq(t,w))).length;const n=kw.length;
-  const need=lenient?1:(n<=2?n:n===3?2:n===4?3:Math.ceil(n*.5));if(hits<need)return false;
+  if(lenient){const core=kw.filter(w=>!["jr","sr","ii","iii"].includes(w));const last=core[core.length-1];return !!last&&inTok.some(t=>feq(t,last));}
+  const need=n<=2?n:n===3?2:n===4?3:Math.ceil(n*.5);if(hits<need)return false;
   if(single&&!lenient){const ik=kwOf(inTok).filter(w=>!FILLER.has(w)&&!GENERIC.has(w));if(ik.length){const miss=ik.filter(t=>!vt.some(w=>feq(t,w))).length;if(miss>(ik.length>=5?1:0))return false;}}
   return true;}
-function acceptable(q){if(q.vary)return S.mine[q.n]?[S.mine[q.n]]:[];return q.a;}
+function acceptable(q){if(q.vary){const v=mineVal(q.n);return v?v.split(/\s+or\s+|\s*;\s*|\s*\/\s*/i).map(x=>x.trim()).filter(Boolean):[];}return q.a;}
 function matchQ(q,input){const answers=acceptable(q);const inTok=tokens(input);if(!inTok.length||!answers.length)return{ok:false,hits:[]};
   const single=Math.min(q.need,answers.length)===1;
   const hits=answers.filter(a=>variants(a).some(v=>variantHit(inTok,v,!!q.vary,single)));
@@ -560,9 +568,9 @@ function restore(n,s){const o=JSON.parse(s);if(o.p)S.p[n]=o.p;else delete S.p[n]
 // h = {grade(ok), override(), next(fbBox)}
 function ask(q,root,h){stopListen();A={q,h,root,done:false,opts:null};const box=root.querySelector(".ansui");
   const mode=S.input||"tap";
-  if(q.vary&&(mode==="tap"||!S.mine[q.n])){
+  if(q.vary&&(mode==="tap"||!mineVal(q.n))){
     box.innerHTML=`<p class="small">${mode!=="tap"?"Save your answer below to have your typed or spoken answers checked automatically. For now, ":""}Say it to yourself, then check.</p>${mineBox(q)}<div class="selfcheck"><button class="btn" data-reveal>Show answer</button></div>`;
-    box.querySelector("[data-reveal]").onclick=ev=>{stopTimer();ev.target.parentNode.innerHTML=`<div class="fb" style="background:#fff9db;border:2px solid #ffe066;width:100%"><h3>Check yourself</h3>${S.mine[q.n]?`<p><b>Your saved answer:</b> ${esc(S.mine[q.n])}</p>`:`<p>⚠️ You haven’t saved your answer yet. Type it in above (look it up at <b>${esc(q.vary.look)}</b>).</p>`}<b>From the USCIS document:</b>${ansList(q)}<div class="selfcheck"><button class="btn r" data-sc="0">❌ I missed it</button><button class="btn g" data-sc="1">✅ I knew it</button></div></div>`;
+    box.querySelector("[data-reveal]").onclick=ev=>{stopTimer();ev.target.parentNode.innerHTML=`<div class="fb" style="background:#fff9db;border:2px solid #ffe066;width:100%"><h3>Check yourself</h3>${mineVal(q.n)?`${savedLine(q,"Your saved answer")}`:`<p>⚠️ You haven’t saved your answer yet. Type it in above (look it up at <b>${esc(q.vary.look)}</b>).</p>`}<b>From the USCIS document:</b>${ansList(q)}<div class="selfcheck"><button class="btn r" data-sc="0">❌ I missed it</button><button class="btn g" data-sc="1">✅ I knew it</button></div></div>`;
       box.querySelectorAll("[data-sc]").forEach(b=>b.onclick=()=>finish(b.dataset.sc==="1",{el:b,self:true}));};
     return;}
   if(mode==="tap"){A.opts=makeOptions(q);
@@ -616,7 +624,7 @@ function showFb(box,q,ok,info){const title=info.timeout?"⏰ Time’s up!":info.
   if(info.said&&q.need>1&&info.partial!=null)h+=`<div class="note">You named ${info.partial} of the ${q.need} needed.</div>`;
   if(info.said&&!ok)h+=`<div class="note">I couldn’t match that to an accepted answer. If you meant one of these, tap “I was right”.</div>`;
   if(wrongPart.length)h+=`<div class="note">“${esc(wrongPart.join(", "))}” isn’t an accepted answer to this question.</div>`;
-  if(!info.self){h+=`<b>All accepted answers:</b>${q.vary&&S.mine[q.n]?`<p><b>Your saved answer:</b> ${esc(S.mine[q.n])}</p>`:""}${ansList(q,info.hi)}`;}
+  if(!info.self){h+=`<b>All accepted answers:</b>${q.vary&&mineVal(q.n)?`${savedLine(q,"Your saved answer")}`:""}${ansList(q,info.hi)}`;}
   box.innerHTML=h+`</div>`;}
 
 // ---------- quiz & review ----------
@@ -682,7 +690,7 @@ function endMock(){A=null;const pass=M.right>=M.passAt;const asked=M.res.length;
 // ---------- study list ----------
 function renderList(){const L=pool();$("#lMeta").textContent=`${filterLabel()} · ${L.length} questions`;let cat="";
   $("#listArea").innerHTML=L.map(q=>{const p=S.p[q.n];const col=!p||!p.seen?"#dee2e6":p.miss?"#ff8787":p.box>=MASTER_BOX?"#51cf66":"#ffd43b";const h=q.category!==cat?`<h2>${esc(q.section)} · ${esc(CAT_SHORT[q.category]||q.category)}</h2>`:"";cat=q.category;
-    return `${h}<details><summary><span class="lvl" style="background:${col}"></span>${q.n}. ${esc(q.q)} ${q.star?"<span class='pill star'>★</span>":""}${q.vary?"<span class='pill vary'>varies</span>":""}</summary><div class="ans">${q.vary&&S.mine[q.n]?`<p><b>Your answer:</b> ${esc(S.mine[q.n])}</p>`:""}${ansList(q)}</div>${mineBox(q)}${canSpeak?`<button class="btn ghost" style="margin-top:8px" onclick="say(BYN[${q.n}].q+'. '+BYN[${q.n}].a.join('. '))">🔊 Read aloud</button>`:""}</details>`;}).join("");}
+    return `${h}<details><summary><span class="lvl" style="background:${col}"></span>${q.n}. ${esc(q.q)} ${q.star?"<span class='pill star'>★</span>":""}${q.vary?"<span class='pill vary'>varies</span>":""}</summary><div class="ans">${q.vary&&mineVal(q.n)?`${savedLine(q,"Your answer")}`:""}${ansList(q)}</div>${mineBox(q)}${canSpeak?`<button class="btn ghost" style="margin-top:8px" onclick="say(BYN[${q.n}].q+'. '+BYN[${q.n}].a.join('. '))">🔊 Read aloud</button>`:""}</details>`;}).join("");}
 function renderMine(){$("#mineArea").innerHTML=Object.keys(VARY).map(n=>{const q=BYN[n];return `<div class="panel"><div class="qnum">Question ${n}</div><b>${esc(q.q)}</b><div class="note">USCIS: ${esc(q.a.join(" "))}</div>${mineBox(q)}</div>`;}).join("");}
 
 // ---------- keyboard ----------
