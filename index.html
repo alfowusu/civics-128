@@ -374,7 +374,7 @@ html[data-theme=dark] .panel.soft.yel,html[data-theme=dark] .fb.yel{background:#
 
 <section class="view" id="v-mine">
   <div class="topline"><button class="back" data-go="home">← Home</button><div class="meta">Saved on this device</div></div>
-  <div class="panel small">These answers depend on where you live or who is in office at the time of your interview. The USCIS document doesn’t give one answer for them, so type in yours. Look them up at senate.gov, house.gov, usa.gov/states-and-territories, and <b>uscis.gov/citizenship/testupdates</b>.<br><br>📍 <b>Pre-filled for Athens, Ohio (ZIP 45701).</b> Verified Oct 20, 2026. Ohio elects a new governor, a U.S. senator (special election for Jon Husted’s seat) and its U.S. representatives on Nov 3, 2026, and the winners take office in January 2027. Check these again after the election and before your interview. Type over any answer to change it.</div>
+  <div class="panel small">These answers depend on where you live or who is in office at the time of your interview. The USCIS document doesn’t give one answer for them, so type in yours. Look them up at senate.gov, house.gov, usa.gov/states-and-territories, and <b>uscis.gov/citizenship/testupdates</b>.<br><br>📍 <b>Pre-filled for Athens, Ohio (ZIP 45701).</b> Re-checked Nov 6, 2026 after the election. Keep these current officials for now: senators Bernie Moreno or Jon Husted, Rep. Troy Balderson, Governor Mike DeWine, Speaker Mike Johnson. Winners take office later (Sherrod Brown as early as Dec 15 for that Senate seat; Amy Acton as governor on Jan 11, 2027; new U.S. rep and likely a new Speaker after Jan 3). Answer with whoever is serving at your interview. Type over any answer to change it.</div>
   <div id="mineArea"></div>
 </section>
 </div>
@@ -395,7 +395,7 @@ const VARY = {
   57:{kind:"office",label:"Chief Justice now",look:"uscis.gov/citizenship/testupdates"}
 };
 // Default local answers for Athens, OH (ZIP 45701). User-typed values (localStorage) override these.
-const LOCAL_NOTE="Set for Athens, OH — verified Oct 20, 2026; check after the Nov 3 election";
+const LOCAL_NOTE="Set for Athens, OH - still correct Nov 6, 2026. Keep these until winners take office";
 const DEFAULT_MINE={23:"Bernie Moreno or Jon Husted",29:"Troy Balderson",61:"Mike DeWine",62:"Columbus",30:"Mike Johnson",38:"Donald J. Trump",39:"JD Vance",57:"John G. Roberts, Jr."};
 function mineVal(n){const v=S.mine[n];return (v!==undefined&&v!==null&&String(v).trim()!=="")?String(v).trim():(DEFAULT_MINE[n]||"");}
 function savedLine(q,label){return `<p><b>${label}:</b> ${esc(mineVal(q.n))}</p>${mineIsDefault(q.n)?`<div class="note">📍 ${esc(LOCAL_NOTE)}</div>`:""}`;}
