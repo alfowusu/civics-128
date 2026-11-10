@@ -178,6 +178,22 @@ a{color:var(--blue)}
 .warn{background:#fff4e6;border:2px solid #ffd8a8;border-radius:12px;padding:10px;margin:10px 0;font-size:.9rem}
 .selfcheck .fb{margin-top:0}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+.view.is-review > :not(.topline):not(.score):not(#sessReview):not(#sessBar):not(#sessSheet){display:none!important}
+.sessbar{display:flex;gap:8px;align-items:stretch;margin:14px 0 8px;position:sticky;bottom:8px;z-index:6}
+.sessbar .btn{min-height:52px}
+.sessclock{background:#fff;color:var(--ink);min-width:52px;min-height:52px;padding:0 12px;font-size:1.15rem;box-shadow:0 1px 4px #0001;font-weight:800;display:inline-flex;align-items:center;justify-content:center;gap:4px;flex:none}
+.sessclock .n{font-size:.8rem}
+.sesssheet{background:var(--card);border-radius:18px;padding:14px 14px 8px;margin:10px 0 20px;box-shadow:0 8px 28px #0002}
+.sesssheet h3{margin:0 0 8px}
+.sesssheet ol{list-style:none;margin:0;padding:0}
+.sesssheet li{display:flex;gap:10px;align-items:flex-start;padding:12px 8px;min-height:52px;border-bottom:1px solid #eee;cursor:pointer;border-radius:10px}
+.sesssheet li:hover,.sesssheet li:active{background:#f1f3ff}
+.sesssheet .sq{flex:none;font-size:1.1rem}
+.sessnote{text-align:center;color:var(--mute);margin:8px 0 0}
+.plb.auBack,.plb.auFwd{min-width:62px;height:auto;padding:6px 6px;flex-direction:column;gap:1px;font-size:1.15rem;display:inline-flex;align-items:center;justify-content:center;line-height:1.1}
+.plb .plblab{font-size:.58rem;font-weight:800;letter-spacing:.01em}
+html[data-theme=dark] .sessclock,html[data-theme=dark] .sesssheet{background:#1b2030;color:#e7ebff}
+html[data-theme=dark] .sesssheet li{border-bottom-color:#2a3350}
 .m9{background:linear-gradient(135deg,#c2255c,#f783ac)}.m11{background:linear-gradient(135deg,#e67700,#ffc078)}
 .bars .tbar{margin:8px 0}.bars .bl{display:flex;justify-content:space-between;font-size:.88rem;gap:8px}
 .bars .bt{height:14px;background:#f1f3f5;border-radius:99px;overflow:hidden;margin-top:3px}.bars .bf{height:100%;border-radius:99px}
@@ -487,7 +503,7 @@ html[data-theme=dark] .syncbox{background:#1b2030;color:#e9ecef}
     <label class="switch" id="aPicksWrap"><input type="checkbox" id="aPicks" checked> Read my picks only</label>
     <select id="aTrack" aria-label="Recording"></select>
     <audio id="aud" controls preload="none" playsinline></audio>
-    <div class="row arow"><button class="plb" id="aRestart" aria-label="Start over from the beginning" title="Start over">↺</button><button class="plb" id="aPrev" aria-label="Previous question">⏮</button><div class="chips" id="aRates"></div><button class="plb" id="aNext" aria-label="Next question">⏭</button></div>
+    <div class="row arow"><button class="plb" id="aRestart" aria-label="Start over from the beginning" title="Start over">↺</button><button class="plb auBack" id="aPrev" aria-label="Back 1 question" title="Back 1 question">⏮<span class="plblab">Back 1 Q</span></button><div class="chips" id="aRates"></div><button class="plb auFwd" id="aNext" aria-label="Next question" title="Next question">⏭<span class="plblab">Next Q</span></button></div>
     <div class="plstatus" id="aNow"></div>
     <div class="row"><button class="btn ghost" id="aDl" style="flex:1">⬇ Download audio for offline</button><button class="btn ghost" id="aDel" style="flex:none" hidden>Remove</button></div>
     <div class="plstatus" id="aDlStatus"></div>
@@ -651,7 +667,8 @@ function autoReadFlashBack(q){if(!canAutoRead()||!q)return;speakItems(qSpeechIte
 function autoReadFeedback(q,ok,info){if(!canAutoRead()||!q)return;const lead=info&&info.timeout?"Time's up.":ok?"Correct.":"Not quite.";speakItems([{text:lead+" "+pickSpeech(q)}]);}
 function readThisBtn(attrs,label){if(!canSpeak&&!(typeof AUDIO_BASE!=="undefined"&&AUDIO_BASE))return"";return `<button type="button" class="readthis" ${attrs} aria-label="${esc(label||"Read this")}" title="Read this">🔊</button>`;}
 function speakBtn(q){return (canSpeak||(typeof AUDIO_BASE!=="undefined"&&AUDIO_BASE))?`<button type="button" class="speak readthis" data-read-q="${q.n}" aria-label="Read this question">🔊</button>`:"";}
-function currentReadItems(){const on=document.querySelector(".view.on");const id=on&&on.id;
+function currentReadItems(){if(typeof sessInReview==="function"&&sessInReview()&&SESS.items[SESS.at])return sessSpeechItems(SESS.items[SESS.at]);
+  const on=document.querySelector(".view.on");const id=on&&on.id;
   if(id==="v-flash"&&typeof fq!=="undefined"&&fq)return $("#fc")&&$("#fc").classList.contains("flipped")?qSpeechItems(fq,"answers"):qSpeechItems(fq,"q");
   if((id==="v-quiz"||id==="v-mock")&&typeof A!=="undefined"&&A&&A.q)return A.done?qSpeechItems(A.q,"fb"):qSpeechItems(A.q,"q");
   if(id==="v-speak"&&typeof SP!=="undefined"&&SP&&SP.cur)return qSpeechItems(SP.cur,A&&A.done?"fb":"q");
@@ -857,7 +874,7 @@ function syncChrome(){document.documentElement.removeAttribute("data-start");con
   else h1.innerHTML=`🇺🇸 Civics 128<small>U.S. citizenship test practice · 2025 version</small>`;}
 function go(v){stopTimer();if(typeof plStop==="function"&&PL.playing)plStop();if(typeof stopListen==="function")stopListen();if(typeof stopSpeech==="function")stopSpeech();else if(canSpeak)try{speechSynthesis.cancel();}catch(e){}A=null;document.querySelectorAll(".view").forEach(x=>x.classList.remove("on"));
   if(v==="flash")startFlash();else if(v==="quiz")startQuiz(false);else if(v==="review")startQuiz(true);else if(v==="mock")mockIntro();else if(v==="list")renderList();else if(v==="mine")renderMine();else if(typeof EXTGO!=="undefined"&&EXTGO[v])EXTGO[v]();else{v="home";updateHome();chips();}
-  rememberSection(v);const node=$("#v-"+(v==="review"?"quiz":v));if(node)node.classList.add("on");scrollTo(0,0);location.hash=v==="home"?"":v;syncChrome();}
+  rememberSection(v);const node=$("#v-"+(v==="review"?"quiz":v));if(node)node.classList.add("on");scrollTo(0,0);location.hash=v==="home"?"":v;syncChrome();if(!SESS_WANT_RESTORE&&typeof sessExitReview==="function")sessExitReview(true);if(typeof sessSyncNav==="function")sessSyncNav();}
 document.addEventListener("click",e=>{const b=e.target.closest("[data-go]");if(!b)return;go(b.dataset.go);if(b.dataset.go==="list"){if(e.target.closest("[data-playall]"))mainPlay();else if(e.target.closest("[data-restart]"))mainRestart();}});
 $("#homeBtn").onclick=()=>{const on=document.querySelector(".view.on");const id=on?on.id.slice(2):"choose";if(id==="home"||id==="marriage"||id==="choose")go("choose");else if(MARRY_VIEWS.includes(id))go("marriage");else go("home");};
 $("#resetBtn").onclick=()=>{if(confirm("Reset all progress (your local answers are kept)?")){const mine=S.mine,picks=S.picks||{},section=S.section,couple=S.couple||{},coupleDocs=S.coupleDocs||{},coupleReview=S.coupleReview||[],notice=S.notice||{};S=blank();S.mine=mine;S.picks=picks;S.section=section;S.couple=couple;S.coupleDocs=coupleDocs;S.coupleReview=coupleReview;S.notice=notice;save();refreshStats();go(section==="marriage"?"marriage":"home");}};
@@ -894,19 +911,142 @@ document.addEventListener("click",e=>{
   const pb=e.target.closest("[data-pick]");if(!pb)return;e.preventDefault();e.stopPropagation();togglePick(+pb.dataset.pick,decodeURIComponent(pb.dataset.ans));
 },true);
 
+// ---------- this-session history (memory + sessionStorage; not civics128.v1) ----------
+const SESS_KEY="civics128.session";
+let SESS={mode:null,items:[],at:null,game:null};
+let SESS_WANT_RESTORE=false;
+function sessLoad(){try{const r=JSON.parse(sessionStorage.getItem(SESS_KEY)||"null");if(r&&typeof r==="object")SESS={mode:r.mode||null,items:Array.isArray(r.items)?r.items:[],at:r.at==null?null:+r.at,game:r.game||null};}catch(e){SESS={mode:null,items:[],at:null,game:null};}}
+function sessSave(){try{if(SESS.mode)SESS.game=sessSnapshot();sessionStorage.setItem(SESS_KEY,JSON.stringify(SESS));}catch(e){}}
+function sessStart(mode){SESS={mode,items:[],at:null,game:null};try{sessionStorage.setItem(SESS_KEY,JSON.stringify(SESS));}catch(e){}sessExitReview(true);sessSyncNav();}
+function sessSnapshot(){const mode=SESS&&SESS.mode;
+  try{
+    if(mode==="flash")return{fq:fq&&fq.n,list:(fList||[]).map(q=>q.n),flipped:!($("#fc")&&$("#fc").classList.contains("flipped"))?false:true};
+    if(mode==="quiz"||mode==="review"||mode==="final")return{list:(Q.list||[]).map(q=>q.n),cur:Q.cur&&Q.cur.n,right:Q.right,wrong:Q.wrong,run:Q.run,review:!!Q.review,seq:!!Q.seq,si:Q.si||0,label:Q.label||"",input:S.input,ended:!(Q.cur)&&!!Q.seq&&(Q.si||0)>=(Q.list||[]).length};
+    if(mode==="mock"&&M)return{qs:M.qs.map(q=>q.n),i:M.i,right:M.right,wrong:M.wrong,max:M.max,passAt:M.passAt,failAt:M.failAt,senior:!!M.senior,res:(M.res||[]).slice(),ended:!!M.ended};
+    if(mode==="speak"&&typeof SP!=="undefined"&&SP)return{real:!!SP.real,qs:(SP.qs||[]).map(q=>q.n),i:SP.i,right:SP.right,wrong:SP.wrong,max:SP.max,passAt:SP.passAt,failAt:SP.failAt,res:(SP.res||[]).slice(),ended:!!SP.ended};
+    if(mode==="couple"&&typeof CQ!=="undefined"&&CQ)return{ids:(CQ.list||[]).map(q=>q.id),i:CQ.i,asker:CQ.asker,cat:CQ.cat||"",ended:CQ.i>=(CQ.list||[]).length};
+  }catch(e){}
+  return SESS.game||null;}
+function sessPush(it){if(!SESS||!SESS.mode)return;SESS.items.push(Object.assign({t:Date.now()},it));SESS.at=null;sessSave();sessSyncNav();}
+function sessUpdateLast(patch){const last=SESS.items[SESS.items.length-1];if(!last)return;Object.assign(last,patch);sessSave();sessSyncNav();}
+function sessInReview(){return !!(SESS&&SESS.at!=null);}
+function sessHost(){const v=document.querySelector(".view.on")||document.body;let el=$("#sessReview");if(!el){el=document.createElement("div");el.id="sessReview";}if(el.parentNode!==v)v.appendChild(el);return el;}
+function sessBarEl(){let el=$("#sessBar");if(!el){el=document.createElement("div");el.id="sessBar";el.className="sessbar";el.hidden=true;
+    el.innerHTML="<button type=\"button\" class=\"btn ghost\" id=\"sessPrevBtn\">← Previous</button><button type=\"button\" class=\"sessclock\" id=\"sessHistBtn\" aria-label=\"This session\" title=\"This session\">🕘 <span class=\"n\" id=\"sessCount\">0</span></button><button type=\"button\" class=\"btn\" id=\"sessNextBtn\">Back to current</button>";
+    el.addEventListener("click",e=>{if(e.target.closest("#sessPrevBtn")){e.preventDefault();sessBack();}else if(e.target.closest("#sessNextBtn")){e.preventDefault();sessForward();}else if(e.target.closest("#sessHistBtn")){e.preventDefault();sessToggleSheet();}});}
+  return el;}
+function sessGameViews(){return["v-flash","v-quiz","v-mock","v-speak","v-couplequiz"];}
+function sessSyncNav(){const v=document.querySelector(".view.on");const el=sessBarEl();
+  if(!v||!sessGameViews().includes(v.id)||!SESS||!SESS.mode){el.hidden=true;const sh=$("#sessSheet");if(sh)sh.hidden=true;return;}
+  if(el.parentNode!==v)v.appendChild(el);el.hidden=false;
+  const n=(SESS.items||[]).length,at=SESS.at,review=at!=null;
+  const prev=$("#sessPrevBtn"),next=$("#sessNextBtn"),cnt=$("#sessCount");
+  if(cnt)cnt.textContent=String(n);
+  if(prev){if(SESS.mode==="couple")prev.disabled=!(typeof CQ!=="undefined"&&CQ&&CQ.i>0);else prev.disabled=review?at<=0:n===0;}
+  if(next){next.hidden=!review;next.textContent=(review&&at<n-1)?"Next →":"Back to current";}
+  v.classList.toggle("is-review",review);}
+function sessSpeechItems(it){if(!it)return[];
+  if(it.id){const q=typeof coupleFind==="function"?coupleFind(it.id):null;if(!q)return[];const bits=[{text:q.q}];const rec=typeof coupleGet==="function"?coupleGet(q.id):null;if(rec&&rec.answer)bits.push({text:"Our saved answer: "+rec.answer});if(q.hint)bits.push({text:"Hint: "+q.hint});return bits;}
+  const q=BYN[it.n];if(!q)return[];
+  const lead=[];
+  if(it.said)lead.push({text:"You "+(it.how==="said"?"said":it.how==="typed"?"typed":"answered")+": "+it.said+"."});
+  else if(it.picked&&it.picked.length)lead.push({text:"You picked: "+it.picked.join(", ")+"."});
+  else if(it.how==="flash-yes")lead.push({text:"You marked this Got it."});
+  else if(it.how==="flash-no")lead.push({text:"You marked this Still learning."});
+  if(it.timeout)lead.push({text:"Time's up."});
+  else if(it.ok===true)lead.push({text:"That was correct."});
+  else if(it.ok===false)lead.push({text:"That was not quite right."});
+  return qSpeechItems(q,"q").concat(lead).concat(qSpeechItems(q,"answers"));}
+function sessYouHTML(it){if(it.said)return "<p>You "+(it.how==="said"?"said":it.how==="typed"?"typed":"answered")+": <b>“"+esc(it.said)+"”</b></p>";
+  if(it.picked&&it.picked.length)return "<p>You picked: <b>"+esc((it.picked).map(display).join(", "))+"</b></p>";
+  if(it.how==="flash-yes")return "<p>You marked this <b>Got it</b>.</p>";
+  if(it.how==="flash-no")return "<p>You marked this <b>Still learning</b>.</p>";
+  if(it.how==="skipped")return "<p>You skipped this one.</p>";
+  if(it.how==="timeout")return "<p>Time ran out before you answered.</p>";
+  return"";}
+function sessReviewHTML(it,i){const n=SESS.items.length;
+  if(it.id){const q=typeof coupleFind==="function"?coupleFind(it.id):null;if(!q)return"<p>Question not found.</p>";
+    const rec=typeof coupleGet==="function"?coupleGet(q.id):null;
+    return "<div class=\"qcard sessrev\">"+(typeof readThisBtn==="function"?readThisBtn("data-read-couple=\""+q.id+"\""):"")+"<div class=\"qnum\">"+(q.catTitle||"Marriage")+" · this session</div><div class=\"qtext\">"+esc(q.q)+"</div>"+(q.hint?"<div class=\"tip\">💡 "+esc(q.hint)+"</div>":"")+(rec&&rec.answer?"<p><b>Our answer:</b> "+esc(rec.answer)+"</p>":"")+"<p class=\"sessnote\">Review only.</p></div>";}
+  const q=BYN[it.n];if(!q)return"<p>Question not found.</p>";
+  const ok=it.ok,title=it.timeout?"⏰ Time’s up!":it.how==="skipped"?"Here’s the answer 📘":it.how==="flash-yes"?"✅ Got it":it.how==="flash-no"?"😅 Still learning":ok?"Correct ✅":"Not quite ❌";
+  return "<div class=\"qcard sessrev\" data-sess-n=\""+q.n+"\">"+speakBtn(q)+"<div class=\"qnum\">Question "+q.n+" · this session ("+(i+1)+" of "+n+")</div><div>"+pills(q)+"</div><div class=\"qtext\">"+esc(q.q)+"</div>"
+    +sessYouHTML(it)
+    +"<div class=\"fb "+(ok?"ok":"no")+"\"><h3>"+title+"</h3><b>Correct answers:</b>"+(q.vary&&mineVal(q.n)?savedLine(q,"Your saved answer"):"")+ansList(q)+tipHTML(q)+readThisBtn("data-read-fb=\""+q.n+"\"","Read the answer")+"</div>"
+    +"<p class=\"sessnote\">Review only — this doesn’t change your score, streak, or points.</p></div>";}
+function sessShow(i){if(!SESS.items||!SESS.items[i])return;
+  if(SESS.mode==="couple"){if(CQ){CQ.i=i;renderCoupleQuiz();SESS.at=null;sessSave();sessSyncNav();}return;}
+  SESS.at=i;sessSave();
+  const host=sessHost();host.hidden=false;host.innerHTML=sessReviewHTML(SESS.items[i],i);
+  sessSyncNav();
+  const sh=$("#sessSheet");if(sh)sh.hidden=true;
+  if(typeof stopSpeech==="function")stopSpeech();
+  const it=SESS.items[i];
+  if(typeof canAutoRead==="function"&&canAutoRead())speakItems(sessSpeechItems(it));
+  try{host.scrollIntoView({block:"start",behavior:"smooth"});}catch(e){}}
+function sessExitReview(quiet){const was=SESS.at;SESS.at=null;if(!quiet)sessSave();
+  document.querySelectorAll(".is-review").forEach(v=>v.classList.remove("is-review"));
+  const el=$("#sessReview");if(el){el.hidden=true;el.innerHTML="";}
+  const sh=$("#sessSheet");if(sh)sh.hidden=true;
+  sessSyncNav();
+  if(!quiet&&was!=null&&typeof canAutoRead==="function"&&canAutoRead()&&typeof currentReadItems==="function")speakItems(currentReadItems());}
+function sessBack(){if(SESS.mode==="couple"){if(CQ&&CQ.i>0){CQ.i=Math.max(0,CQ.i-1);renderCoupleQuiz();sessSave();sessSyncNav();}else if(CQ&&CQ.list&&CQ.i>=CQ.list.length&&CQ.list.length){CQ.i=CQ.list.length-1;renderCoupleQuiz();sessSave();sessSyncNav();}return;}
+  if(!SESS.items.length)return;const i=SESS.at==null?SESS.items.length-1:SESS.at-1;if(i<0)return;sessShow(i);}
+function sessForward(){if(SESS.at==null)return;if(SESS.at<SESS.items.length-1)sessShow(SESS.at+1);else sessExitReview();}
+function sessToggleSheet(){let sh=$("#sessSheet");const v=document.querySelector(".view.on");if(!v)return;
+  if(!sh){sh=document.createElement("div");sh.id="sessSheet";sh.className="sesssheet";sh.hidden=true;
+    sh.addEventListener("click",e=>{const li=e.target.closest("[data-sess-i]");if(!li)return;sessShow(+li.dataset.sessI);});}
+  if(sh.parentNode!==v)v.appendChild(sh);
+  if(!sh.hidden){sh.hidden=true;return;}
+  const items=SESS.items||[];
+  sh.innerHTML="<h3>🕘 This session</h3>"+(items.length?"<ol>"+items.map((it,i)=>{const q=it.id?(typeof coupleFind==="function"&&coupleFind(it.id)):BYN[it.n];const mark=it.ok===true?"✅":it.ok===false?"❌":"•";const label=q?(it.id?q.q:(q.n+". "+q.q)):(it.id||("Question "+it.n));return "<li data-sess-i=\""+i+"\" role=\"button\" tabindex=\"0\"><span class=\"sq\">"+mark+"</span><span>"+esc(label)+"</span></li>";}).join("")+"</ol>":"<p class=\"small\">No questions answered yet in this session.</p>");
+  sh.hidden=false;}
+function sessTryRestore(mode){if(!SESS_WANT_RESTORE)return false;
+  const ok=SESS.mode===mode||(mode==="quiz"&&(SESS.mode==="quiz"||SESS.mode==="review"||SESS.mode==="final"));
+  if(!ok||!SESS.game){SESS_WANT_RESTORE=false;return false;}
+  SESS_WANT_RESTORE=false;
+  if(!sessApply(SESS))return false;
+  sessSyncNav();if(SESS.at!=null&&SESS.mode!=="couple")sessShow(SESS.at);
+  return true;}
+function sessApply(st){const g=st.game||{},mode=st.mode;
+  try{
+    if(mode==="flash"){fList=(g.list||[]).map(n=>BYN[n]).filter(Boolean);if(!fList.length)return false;fq=BYN[g.fq]||fList[0];
+      const q=fq;$("#fMeta").textContent=filterLabel()+" · "+fList.filter(x=>mastered(x.n)).length+"/"+fList.length+" mastered";
+      $("#fFront").innerHTML=speakBtn(q)+"<div class=\"qnum\">Question "+q.n+"</div><div>"+pills(q)+"</div><div class=\"qtext\">"+esc(q.q)+"</div><div class=\"hint\">👆 Tap to see the answer</div>";
+      $("#fBack").innerHTML=readThisBtn("data-read-fb=\""+q.n+"\"","Read the answer")+"<div class=\"qnum\">Question "+q.n+" · answer"+(q.a.length>1?"s":"")+"</div><div class=\"small\" style=\"margin:4px 0 6px\">"+esc(q.q)+"</div><div class=\"ans\">"+(q.vary&&mineVal(q.n)?savedLine(q,"Your answer"):"")+ansList(q)+"</div>"+mineBox(q)+tipHTML(q)+"<div class=\"hint\">Tap to flip back</div>";
+      if(g.flipped)$("#fc").classList.add("flipped");else $("#fc").classList.remove("flipped");return true;}
+    if(mode==="quiz"||mode==="review"||mode==="final"){Q={list:(g.list||[]).map(n=>BYN[n]).filter(Boolean),cur:g.cur?BYN[g.cur]:null,right:g.right||0,wrong:g.wrong||0,run:g.run||0,review:!!g.review,seq:!!g.seq,si:g.si||0,label:g.label||""};
+      if(g.input)S.input=g.input;$("#timerOn").checked=S.timer;$("#timerSec").value=String(S.timerSec);$("#timerBar").hidden=!S.timer;$("#qModes").innerHTML=modeChips();$("#srWarn").hidden=!(S.input==="speak"&&!SR);setAuto(S.auto);updQuizScore();
+      if(g.ended||(Q.seq&&!Q.cur&&Q.si>=Q.list.length)){A=null;nextQuiz();return true;}
+      if(!Q.cur){nextQuiz();return true;}renderQuizQ();return true;}
+    if(mode==="mock"){M={qs:(g.qs||[]).map(n=>BYN[n]).filter(Boolean),i:g.i||0,right:g.right||0,wrong:g.wrong||0,max:g.max||20,passAt:g.passAt||12,failAt:g.failAt||9,senior:!!g.senior,res:(g.res||[]).slice(),ended:!!g.ended};
+      if(M.ended||(typeof mockOver==="function"&&mockOver()&&M.res.length)){M.ended=true;renderMockResult(false);return true;}
+      nextMock();return true;}
+    if(mode==="speak"&&typeof speakNext==="function"){SP={real:!!g.real,qs:(g.qs||[]).map(n=>BYN[n]).filter(Boolean),i:g.i||0,right:g.right||0,wrong:g.wrong||0,max:g.max,passAt:g.passAt||12,failAt:g.failAt||9,res:(g.res||[]).slice(),ended:!!g.ended};
+      if(SP.ended&&typeof speakEnd==="function"){speakEnd();return true;}speakNext();return true;}
+    if(mode==="couple"&&typeof renderCoupleQuiz==="function"){const all=typeof coupleAllQ==="function"?coupleAllQ():[];const by={};all.forEach(q=>by[q.id]=q);
+      CQ={list:(g.ids||[]).map(id=>by[id]).filter(Boolean),i:g.i||0,asker:g.asker||1,cat:g.cat||""};renderCoupleQuiz();return true;}
+  }catch(e){return false;}
+  return false;}
+
 // ---------- flashcards ----------
 let fq=null,fList=[];
-function startFlash(){fList=pool();recent=[];nextFlash();}
+function startFlash(){if(typeof sessTryRestore==="function"&&sessTryRestore("flash"))return;if(typeof sessStart==="function")sessStart("flash");fList=pool();recent=[];nextFlash();}
 function nextFlash(){if(typeof stopSpeech==="function")stopSpeech();const fc=$("#fc");fc.classList.remove("flipped");fq=nextQ(fList);const q=fq;
   $("#fMeta").textContent=`${filterLabel()} · ${fList.filter(x=>mastered(x.n)).length}/${fList.length} mastered`;
   setTimeout(()=>{
   $("#fFront").innerHTML=`${speakBtn(q)}<div class="qnum">Question ${q.n}</div><div>${pills(q)}</div><div class="qtext">${esc(q.q)}</div><div class="hint">👆 Tap to see the answer</div>`;
   $("#fBack").innerHTML=`${readThisBtn('data-read-fb="'+q.n+'"','Read the answer')}<div class="qnum">Question ${q.n} · answer${q.a.length>1?"s":""}</div><div class="small" style="margin:4px 0 6px">${esc(q.q)}</div><div class="ans">${q.vary&&mineVal(q.n)?`${savedLine(q,"Your answer")}`:""}${ansList(q)}</div>${mineBox(q)}${tipHTML(q)}<div class="hint">Tap to flip back</div>`;},150);
-  autoSay(q);}
+  autoSay(q);if(typeof sessSave==="function")sessSave();if(typeof sessSyncNav==="function")sessSyncNav();}
 function flipFlash(){const on=$("#fc").classList.toggle("flipped");if(on&&fq)autoReadFlashBack(fq);else if(!on&&fq)autoReadQuestion(fq);}
 $("#fc").onclick=e=>{if(e.target.closest("input,button,a,label,textarea,.ansbox,.pickul,.pickbtn,.mine-box,.picktip,[data-pick],[data-read-q],[data-read-fb]"))return;flipFlash();};
-function flashAnswer(ok){if(!fq)return;record(fq.n,ok,{el:$("#fYes")});if(ok){buzz(20);}else buzz([30,40,30]);nextFlash();}
+function flashAnswer(ok){if(!fq||(typeof sessInReview==="function"&&sessInReview()))return;if(typeof sessPush==="function")sessPush({n:fq.n,ok,how:ok?"flash-yes":"flash-no"});record(fq.n,ok,{el:$("#fYes")});if(ok){buzz(20);}else buzz([30,40,30]);nextFlash();}
 $("#fYes").onclick=()=>flashAnswer(true);$("#fNo").onclick=()=>flashAnswer(false);
+(function(){const el=$("#fc");if(!el)return;let x0=0,y0=0,armed=false;
+  el.addEventListener("touchstart",e=>{if(e.touches.length!==1)return;if(e.target.closest("input,button,a,label,textarea,.ansbox,.pickul,.pickbtn,.mine-box,.picktip,[data-pick]"))return;x0=e.touches[0].clientX;y0=e.touches[0].clientY;armed=true;},{passive:true});
+  el.addEventListener("touchend",e=>{if(!armed)return;armed=false;const t=e.changedTouches[0];const dx=t.clientX-x0,dy=t.clientY-y0;if(Math.abs(dx)<56||Math.abs(dx)<Math.abs(dy)*1.4)return;
+    if(dx>0){if(typeof sessBack==="function")sessBack();}else if(typeof sessInReview==="function"&&sessInReview()&&typeof sessForward==="function")sessForward();});
+})();
 
 // ---------- forgiving answer matching ----------
 const NUMS={zero:0,one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10,eleven:11,twelve:12,thirteen:13,fourteen:14,fifteen:15,sixteen:16,seventeen:17,eighteen:18,nineteen:19};
@@ -1044,10 +1184,11 @@ function timeUp(){if(!A||A.done)return;if(A.opts)markOpts(-1);finish(false,{time
 function finish(ok,info){if(!A||A.done)return;A.done=true;stopTimer();stopListen();const {q,h,root}=A;
   root.querySelectorAll(".ansui button,.ansui input").forEach(x=>x.disabled=true);
   const fb=root.querySelector(".fbx");const snap=snapshot(q.n);
-  showFb(fb,q,ok,info);record(q.n,ok,{el:info.el||fb});h.grade(ok);
+  showFb(fb,q,ok,info);if(typeof sessPush==="function")sessPush({n:q.n,ok,said:info.said||"",how:info.how||(info.timeout?"timeout":info.picked?"tapped":info.self?"self":"answered"),picked:info.picked||[],timeout:!!info.timeout,self:!!info.self});
+  record(q.n,ok,{el:info.el||fb});h.grade(ok);
   if(ok){buzz(20);}else buzz([30,40,30]);
   if(!ok&&info.canOverride){const b=document.createElement("button");b.className="btn ghost";b.style.cssText="margin-top:10px;width:100%";b.textContent="✋ I was right, count it";
-    b.onclick=()=>{b.remove();restore(q.n,snap);record(q.n,true,{el:fb});h.override();const box=fb.querySelector(".fb");box.className="fb ok";box.querySelector("h3").textContent="Counted as correct ✋";confetti(30);};
+    b.onclick=()=>{b.remove();restore(q.n,snap);record(q.n,true,{el:fb});h.override();if(typeof sessUpdateLast==="function")sessUpdateLast({ok:true,overridden:true});const box=fb.querySelector(".fb");box.className="fb ok";box.querySelector("h3").textContent="Counted as correct ✋";confetti(30);};
     fb.querySelector(".fb").appendChild(b);}
   h.next(fb);}
 const PRAISE=["Correct! 🎉","Nice! ⭐","You got it! 💪","Excellent! 🇺🇸","Spot on! ✨","Great job! 🙌"];
@@ -1068,7 +1209,7 @@ function showFb(box,q,ok,info){const title=info.timeout?"⏰ Time’s up!":info.
 let Q={list:[],cur:null,right:0,wrong:0,run:0,review:false};
 $("#timerOn").onchange=e=>{S.timer=e.target.checked;save();$("#timerBar").hidden=!S.timer;if(A&&!A.done&&Q.cur){if(S.timer)startTimer();else stopTimer();}};
 $("#timerSec").onchange=e=>{S.timerSec=+e.target.value;save();};
-function startQuiz(review){Q={list:review?misses():pool(),cur:null,right:0,wrong:0,run:0,review};recent=[];$("#timerOn").checked=S.timer;$("#timerSec").value=String(S.timerSec);$("#timerBar").hidden=!S.timer;$("#qModes").innerHTML=modeChips();$("#srWarn").hidden=!(S.input==="speak"&&!SR);setAuto(S.auto);nextQuiz();}
+function startQuiz(review){if(typeof sessTryRestore==="function"&&sessTryRestore(review?"review":"quiz"))return;if(typeof sessStart==="function")sessStart(review?"review":"quiz");Q={list:review?misses():pool(),cur:null,right:0,wrong:0,run:0,review};recent=[];$("#timerOn").checked=S.timer;$("#timerSec").value=String(S.timerSec);$("#timerBar").hidden=!S.timer;$("#qModes").innerHTML=modeChips();$("#srWarn").hidden=!(S.input==="speak"&&!SR);setAuto(S.auto);nextQuiz();}
 function updQuizScore(){$("#qRight").textContent=Q.right;$("#qWrong").textContent=Q.wrong;$("#qStreak").textContent=Q.run;}
 function nextQuiz(){stopTimer();stopListen();if(typeof stopSpeech==="function")stopSpeech();updQuizScore();
   if(Q.review){Q.list=Q.list.filter(q=>S.p[q.n]&&S.p[q.n].miss);
@@ -1084,13 +1225,13 @@ function renderQuizQ(){stopTimer();const q=Q.cur;
     grade:ok=>{if(ok){Q.right++;Q.run++;if(Q.run%3===0||Q.review)confetti(40);}else{Q.wrong++;Q.run=0;}updQuizScore();},
     override:()=>{Q.wrong--;Q.right++;Q.run++;updQuizScore();},
     next:fb=>{const nx=document.createElement("div");nx.className="row";nx.style.marginTop="12px";nx.innerHTML=`<button class="btn" id="nextQ">Next question →</button>`;fb.appendChild(nx);$("#nextQ").onclick=nextQuiz;$("#nextQ").focus({preventScroll:true});}});
-  autoSay(q);if(S.timer)startTimer();}
+  autoSay(q);if(S.timer)startTimer();if(typeof sessSave==="function")sessSave();if(typeof sessSyncNav==="function")sessSyncNav();}
 function startTimer(){stopTimer();const total=S.timerSec*1000,t0=Date.now();const f=$("#timerFill");f.style.transform="scaleX(1)";timerH=setInterval(()=>{const left=1-(Date.now()-t0)/total;f.style.transform=`scaleX(${Math.max(0,left)})`;if(left<=0){stopTimer();timeUp();}},100);}
 
 // ---------- mock interview ----------
 let M=null;
 function fmtShort(t){try{return new Date(t).toLocaleDateString("en-US",{month:"short",day:"numeric"});}catch(e){return"";}}
-function mockIntro(){A=null;$("#mMeta").textContent="Mock interview";const last=S.mocks.slice(-5).reverse();
+function mockIntro(){if(typeof sessTryRestore==="function"&&sessTryRestore("mock"))return;A=null;$("#mMeta").textContent="Mock interview";const last=S.mocks.slice(-5).reverse();
   $("#mockArea").innerHTML=`<div class="qcard"><div class="big">🎤</div><h2 style="text-align:center;margin-top:0">Practice the real interview</h2>
   <b>How do you want to answer?</b><div class="chips" style="margin:8px 0">${modeChips()}</div>
   <div class="warn" id="srWarn" ${S.input==="speak"&&!SR?"":"hidden"}>🎙️ Voice answers aren’t supported in this browser, so you’ll get a text box instead.</div>
@@ -1102,8 +1243,8 @@ function mockIntro(){A=null;$("#mMeta").textContent="Mock interview";const last=
   <button class="btn o" id="m65" style="width:100%">Start the 65/20 test</button></div>
   ${last.length?`<div class="panel soft" style="margin-top:12px"><b>Recent results</b><ul class="small" style="padding-left:20px;margin:6px 0">${last.map(r=>`<li>${fmtShort(r.t)} · ${r.pass?"✅ passed":"❌ not yet"} · ${r.right} correct out of ${r.asked} asked (${r.type})</li>`).join("")}</ul></div>`:""}</div>`;
   $("#mStd").onclick=()=>startMock(false);$("#m65").onclick=()=>startMock(true);}
-function startMock(senior){const src=senior?DATA.filter(q=>q.star):DATA;const max=senior?10:20,passAt=senior?6:12;
-  M={qs:shuffle(src).slice(0,max),i:0,right:0,wrong:0,max,passAt,failAt:max-passAt+1,senior,res:[]};nextMock();}
+function startMock(senior){if(typeof sessStart==="function")sessStart("mock");const src=senior?DATA.filter(q=>q.star):DATA;const max=senior?10:20,passAt=senior?6:12;
+  M={qs:shuffle(src).slice(0,max),i:0,right:0,wrong:0,max,passAt,failAt:max-passAt+1,senior,res:[],ended:false};nextMock();}
 function mockDots(){return `<div class="mockdots">${M.qs.map((q,i)=>`<i class="${M.res[i]===true?"ok":M.res[i]===false?"no":i===M.i?"cur":""}"></i>`).join("")}</div>`;}
 function mockOver(){return M.right>=M.passAt||M.wrong>=M.failAt||M.i>=M.qs.length;}
 function nextMock(){stopListen();if(typeof stopSpeech==="function")stopSpeech();if(mockOver())return endMock();
@@ -1115,8 +1256,11 @@ function nextMock(){stopListen();if(typeof stopSpeech==="function")stopSpeech();
     grade:ok=>{M.res[M.i]=ok;ok?M.right++:M.wrong++;dots();},
     override:()=>{M.res[M.i]=true;M.wrong--;M.right++;dots();const b=$("#mNext");if(b)b.textContent=label();},
     next:fb=>{const nx=document.createElement("div");nx.className="row";nx.style.marginTop="12px";nx.innerHTML=`<button class="btn" id="mNext">${label()}</button>`;fb.appendChild(nx);$("#mNext").onclick=()=>{M.i++;nextMock();};$("#mNext").focus({preventScroll:true});}});
-  autoSay(q);}
-function endMock(){A=null;const pass=M.right>=M.passAt;const asked=M.res.length;S.mocks.push({pass,right:M.right,asked,type:M.senior?"65/20":"standard",t:Date.now()});S.mocks=S.mocks.slice(-20);if(pass)S.xp+=50;save();refreshStats();
+  autoSay(q);if(typeof sessSave==="function")sessSave();if(typeof sessSyncNav==="function")sessSyncNav();}
+function endMock(){A=null;if(M)M.ended=true;renderMockResult(true);}
+function renderMockResult(saveRes){if(!M)return;const pass=M.right>=M.passAt;const asked=M.res.length;
+  if(saveRes){S.mocks.push({pass,right:M.right,asked,type:M.senior?"65/20":"standard",t:Date.now()});S.mocks=S.mocks.slice(-20);if(pass)S.xp+=50;save();refreshStats();}
+  if(typeof sessSave==="function")sessSave();
   const missed=M.qs.filter((q,i)=>M.res[i]===false);
   $("#mMeta").textContent="Result";
   $("#mockArea").innerHTML=`${mockDots()}<div class="qcard result"><div class="big">${pass?"🏆":"📚"}</div><h2>${pass?"You passed!":"Not yet. Keep going!"}</h2>
@@ -1125,7 +1269,7 @@ function endMock(){A=null;const pass=M.right>=M.passAt;const asked=M.res.length;
   ${missed.length?`<h3>Questions to review</h3>${missed.map(q=>`<div class="panel soft red"><b>${q.n}. ${esc(q.q)}</b>${ansList(q)}</div>`).join("")}`:""}
   <div class="row"><button class="btn" id="mAgain">Try again</button>${missed.length?`<button class="btn r" data-go="review">Review misses</button>`:""}</div></div>`;
   $("#mAgain").onclick=()=>startMock(M.senior);
-  if(pass){confetti(220);setTimeout(()=>confetti(160),500);if(S.auto)say("Congratulations! You passed.");}}
+  if(saveRes&&pass){confetti(220);setTimeout(()=>confetti(160),500);if(S.auto)say("Congratulations! You passed.");}if(typeof sessSyncNav==="function")sessSyncNav();}
 
 // ---------- study list ----------
 function renderList(){const L=pool();$("#lMeta").textContent=`${filterLabel()} · ${L.length} questions`;let cat="";
@@ -1179,7 +1323,7 @@ function plToggle(){if(!canSpeak)return;if(!PL.playing)return plPlayFrom();if(PL
 function plStop(msg){PL.token++;clearTimeout(PL.gapT);plTimers(false);PL.playing=false;PL.paused=false;PL.cur=null;if(canSpeak)try{speechSynthesis.cancel();}catch(e){}
   plUI();if(msg)$("#plStatus").textContent=msg;document.querySelectorAll("#listArea details.reading").forEach(d=>d.classList.remove("reading"));plMedia(null);}
 function plBar(){const o=plOpts();return `<div id="player" class="player"><div class="row plrow">
-  <button class="plb" id="plRestart" aria-label="Start over from the beginning" title="Start over">↺</button><button class="plb" id="plPrev" aria-label="Previous">⏮</button><button class="plb big" id="plPlay" aria-label="Play">▶</button><button class="plb" id="plNext" aria-label="Next">⏭</button><button class="plb" id="plStop" aria-label="Stop">⏹</button>
+  <button class="plb" id="plRestart" aria-label="Start over from the beginning" title="Start over">↺</button><button class="plb auBack" id="plPrev" aria-label="Back 1 question" title="Back 1 question">⏮<span class="plblab">Back 1 Q</span></button><button class="plb big" id="plPlay" aria-label="Play">▶</button><button class="plb auFwd" id="plNext" aria-label="Next question" title="Next question">⏭<span class="plblab">Next Q</span></button><button class="plb" id="plStop" aria-label="Stop">⏹</button>
   <select id="plRate" aria-label="Speed">${[.75,1,1.25,1.5].map(r=>`<option value="${r}" ${o.rate===r?"selected":""}>${r}×</option>`).join("")}</select></div>
   <div class="plstatus" id="plStatus"></div>
   <details class="plopts"><summary>⚙️ Options</summary><div class="plgrid">
@@ -1195,7 +1339,7 @@ function plWire(){$("#plPlay").onclick=plToggle;$("#plNext").onclick=()=>plAdvan
   $("#plRestart").onclick=plRestart;
   if(!canSpeak)["#plRestart","#plPrev","#plPlay","#plNext","#plStop","#plRate"].forEach(s=>$(s).disabled=true);}
 function plHandlers(){try{if("mediaSession" in navigator){const m=navigator.mediaSession;m.setActionHandler("play",()=>{if(!PL.playing||PL.paused)plToggle();});m.setActionHandler("pause",()=>{if(PL.playing&&!PL.paused)plToggle();});
-    m.setActionHandler("nexttrack",()=>plAdvance(1,false));m.setActionHandler("previoustrack",()=>plAdvance(-1,false));m.setActionHandler("stop",()=>plStop());}}catch(e){}}
+    m.setActionHandler("nexttrack",()=>plAdvance(1,false));m.setActionHandler("previoustrack",()=>plAdvance(-1,false));m.setActionHandler("seekbackward",()=>plAdvance(-1,false));m.setActionHandler("seekforward",()=>plAdvance(1,false));m.setActionHandler("stop",()=>plStop());}}catch(e){}}
 // tapping an item: ▶ button always plays from there; tapping the title plays from there while the player is active
 document.addEventListener("click",e=>{const pb=e.target.closest("[data-playfrom]");const sm=e.target.closest("#listArea summary");
   if(!pb&&!(sm&&(PL.playing||(audioOK()&&!aud().paused))))return;const n=+(pb?pb.dataset.playfrom:sm.parentNode.dataset.n);if(!PL.list.length)plBuild();const i=PL.list.findIndex(q=>q.n===n);if(i<0&&!audioOK())return;
@@ -1259,8 +1403,12 @@ function auMeta(){try{if(!("mediaSession" in navigator)||!AU.tr)return;const q=a
     artwork:[{src:"icon-192.png",sizes:"192x192",type:"image/png"},{src:"icon-512.png",sizes:"512x512",type:"image/png"}]});}catch(e){}}
 function auSet(t){const a=aud();AU.stopAt=null;if(a.readyState>=1)a.currentTime=t;else AU.pendingSeek=t;auOpts().t=t;save();auNow(t);heroUI();}
 // stops: 0:00 (intro + category announcement) and the start of every question
-function auStops(){return [0,...AU.tr.questions.map(x=>x.start)];}
-function auJump(d){if(!AU.tr)return;const a=aud();const s=auStops();const t=a.readyState>=1?a.currentTime:(AU.pendingSeek!=null?AU.pendingSeek:auOpts().t);let i=0;for(let k=0;k<s.length;k++)if(s[k]<=t+0.05)i=k;
+function auStops(){return AU.tr&&AU.tr.questions&&AU.tr.questions.length?[0,...AU.tr.questions.map(x=>x.start)]:[];}
+function auHasQStops(){return !!(AU.tr&&AU.tr.questions&&AU.tr.questions.length);}
+function auNudge(d,sec){const a=aud();const t=a.readyState>=1?a.currentTime:(AU.pendingSeek!=null?AU.pendingSeek:auOpts().t||0);const off=sec||15;auSet(Math.max(0,t+(d<0?-off:off)));if(a&&a.readyState>=1&&!a.paused)a.play().catch(()=>{});}
+function auJump(d){if(!AU.tr)return;
+  if(!auHasQStops()){auNudge(d,15);return;}
+  const a=aud();const s=auStops();const t=a.readyState>=1?a.currentTime:(AU.pendingSeek!=null?AU.pendingSeek:auOpts().t);let i=0;for(let k=0;k<s.length;k++)if(s[k]<=t+0.05)i=k;
   if(d<0&&t-s[i]>3)d=0;i=Math.max(0,Math.min(s.length-1,i+d));auSet(s[i]);}
 function auRestart(){if(!AU.tr)auLoad(auOpts().id,0);auSet(0);aud().play().catch(()=>{});}
 function audioOK(){return !!(AUDIO_BASE&&AU.ready&&AU.tracks.length);}
@@ -1287,7 +1435,7 @@ function auSeekQ(n){AU.stopAt=null;let tr=AU.tr&&AU.tr.questions.some(x=>x.n===n
   if(tr!==AU.tr){$("#aTrack").value=tr.id;auLoad(tr.id,0);}const st=tr.questions.find(x=>x.n===n).start;const a=aud();
   if(a.readyState>=1)a.currentTime=st;else AU.pendingSeek=st;a.play().catch(()=>{});return true;}
 function auHandlers(){try{if(!("mediaSession" in navigator))return;const m=navigator.mediaSession,a=aud();
-  const h={play:()=>a.play(),pause:()=>a.pause(),stop:()=>{a.pause();},seekbackward:d=>{a.currentTime=Math.max(0,a.currentTime-((d&&d.seekOffset)||10));},seekforward:d=>{a.currentTime=Math.min(a.duration||1e9,a.currentTime+((d&&d.seekOffset)||10));},
+  const h={play:()=>a.play(),pause:()=>a.pause(),stop:()=>{a.pause();},seekbackward:d=>{const off=(d&&d.seekOffset)||15;a.currentTime=Math.max(0,a.currentTime-off);},seekforward:d=>{const off=(d&&d.seekOffset)||15;a.currentTime=Math.min(a.duration||1e9,a.currentTime+off);},
     previoustrack:()=>auJump(-1),nexttrack:()=>auJump(1),seekto:d=>{if(d&&d.seekTime!=null)a.currentTime=d.seekTime;}};
   for(const k in h){try{m.setActionHandler(k,h[k]);}catch(e){}}}catch(e){}}
 function auPos(){try{const a=aud();if("mediaSession" in navigator&&navigator.mediaSession.setPositionState&&a.duration&&isFinite(a.duration))navigator.mediaSession.setPositionState({duration:a.duration,playbackRate:a.playbackRate,position:Math.min(a.currentTime,a.duration)});}catch(e){}}
@@ -1356,7 +1504,7 @@ function speakIntro(){A=null;SP=null;stopClip();const o=S.spk=Object.assign({rea
   <button class="btn" id="spGo" style="width:100%">Start</button>
   ${last.length?`<p class="small"><b>Recent:</b> ${last.map(r=>`${r.pass==null?"🗣️":r.pass?"✅":"❌"} ${r.right}/${r.asked}`).join(" · ")}</p>`:""}</div>`;
   $("#spReal").onchange=e=>{o.real=e.target.checked;save();};$("#spText").onchange=e=>{o.showText=e.target.checked;save();};if($("#spAuto"))$("#spAuto").onchange=e=>{o.autoListen=e.target.checked;save();};
-  $("#spGo").onclick=()=>{const real=o.real;SP={real,qs:real?shuffle(DATA).slice(0,20):[],i:0,right:0,wrong:0,max:real?20:Infinity,passAt:12,failAt:9,res:[]};recent=[];speakNext();};}
+  $("#spGo").onclick=()=>{const real=o.real;if(typeof sessStart==="function")sessStart("speak");SP={real,qs:real?shuffle(DATA).slice(0,20):[],i:0,right:0,wrong:0,max:real?20:Infinity,passAt:12,failAt:9,res:[],ended:false};recent=[];speakNext();};}
 function speakOver(){return SP.real&&(SP.right>=SP.passAt||SP.wrong>=SP.failAt||SP.i>=SP.qs.length);}
 function speakNext(){stopListen();if(typeof stopSpeech==="function")stopSpeech();if(speakOver())return speakEnd();const q=SP.real?SP.qs[SP.i]:mark(nextQ(pool()));SP.cur=q;const o=S.spk;
   $("#spMeta").textContent=SP.real?`Question ${SP.i+1} of up to 20 · ✅ ${SP.right} ❌ ${SP.wrong}`:`Practice · ✅ ${SP.right} ❌ ${SP.wrong}`;
@@ -1491,7 +1639,7 @@ function renderReport(){const cs=catStats();let R=0,W=0;cs.forEach(c=>{R+=c.r;W+
   <div class="panel"><h3 style="margin-top:0">🗣️ Speaking practice</h3>
    <p class="small">${sp?`Last session: ${sp.right}/${sp.asked} correct${sp.pass==null?" (practice)":sp.pass?" ✅ passed":" ❌ not yet"}. Real-test sessions: ${spReal.filter(r=>r.pass).length}/${spReal.length} passed.`:"No speaking sessions yet."}</p>${spk.length?`<p class="small">Recent: ${spk.slice(-5).reverse().map(r=>`${r.pass==null?"🗣️":r.pass?"✅":"❌"} ${r.right}/${r.asked}`).join(" · ")}</p>`:""}<button class="btn ghost" data-go="speak" style="width:100%">🗣️ Speaking practice</button></div>`;
   if($("#repGo"))$("#repGo").onclick=()=>startCustom(rec,"🎯 Recommended set");}
-function startCustom(nums,label,opts){go("quiz");Q.list=nums.map(n=>BYN[n]).filter(Boolean);Q.label=label;Q.seq=!!(opts&&opts.seq);Q.si=0;recent=[];nextQuiz();}
+function startCustom(nums,label,opts){go("quiz");Q.list=nums.map(n=>BYN[n]).filter(Boolean);Q.label=label;Q.seq=!!(opts&&opts.seq);Q.si=0;recent=[];if(typeof sessStart==="function")sessStart(/calm|🌙|final/i.test(String(label||""))?"final":"quiz");nextQuiz();}
 function updateExtHome(){renderGoal();renderTheme();renderPlan();renderFinal();if(S.rw||S.n4){delete S.rw;delete S.n4;save();}const el=$("#repSub");if(!el)return;const r=recommend().length;const mi=misses().length;el.textContent=mi?`${mi} missed · ${r} recommended`:"See what to study next";}
 function renderGroups(){
   const list=(GROUPS||[]).slice().sort((a,b)=>b.qs.length-a.qs.length||String(a.answer).localeCompare(String(b.answer)));
@@ -1547,7 +1695,7 @@ function renderMarriage(){const n=coupleAllQ().length,cats=coupleCats().length,d
     <p class="small">These prompts come from public interview recaps and official N-400 topics. They are study tools, not an official list and not legal advice. Answer honestly — don’t invent matching details.</p></div>
     <div class="hero" id="marHero"><b>🎧 Listen to marriage questions</b>
       <span class="hsub" id="marHeroSub">Question plus a short hint · works with the screen locked</span>
-      <div class="bigrow"><button class="bigplay" id="marPlay" type="button">▶ Play all</button><button class="bigrestart" id="marRestart" type="button">↺ Start over</button></div></div>
+      <div class="bigrow"><button class="bigplay" id="marPlay" type="button">▶ Play all</button><button class="bigrestart" id="marPrevQ" type="button" aria-label="Back 1 question">⏮ Back 1 question</button><button class="bigrestart" id="marRestart" type="button">↺ Start over</button></div></div>
     <div class="apanel" id="marAudioMini"><div class="row" style="justify-content:space-between"><b>🎧 Marriage playlist</b><span class="small" style="color:#fff">works with the screen locked</span></div>
       <select id="marTrack" aria-label="Marriage recording"></select></div>
     <h2>Practice together</h2>
@@ -1565,6 +1713,7 @@ function renderMarriage(){const n=coupleAllQ().length,cats=coupleCats().length,d
       <button class="btn" id="shareSpouse" type="button" style="width:100%">📤 Share with my spouse</button>
       <p class="small" id="shareSpouseStatus" style="margin:8px 0 0"></p></div>`;
   if($("#marPlay"))$("#marPlay").onclick=marriageToggle;
+  if($("#marPrevQ"))$("#marPrevQ").onclick=()=>{if(typeof auSetPlaylist==="function"){if(typeof ensureAuThen==="function")ensureAuThen(()=>{if(typeof auSetPlaylist==="function")auSetPlaylist("marriage",true);if(typeof auJump==="function")auJump(-1);});}else if(typeof auJump==="function")auJump(-1);};
   if($("#marRestart"))$("#marRestart").onclick=marriageRestart;
   if($("#shareSpouse"))$("#shareSpouse").onclick=()=>shareWithSpouse();
   if($("#marTrack"))$("#marTrack").onchange=e=>{marriageLoadTrack(e.target.value);};
@@ -1579,7 +1728,7 @@ function renderCoupleCats(){const cats=coupleCats();
       <ol>${c.questions.map(q=>`<li class="cqitem">${typeof readThisBtn==="function"?readThisBtn('data-read-couple="'+q.id+'"'):""}<b>${esc(q.q)}</b>${oftenPill(q)}${q.hint?`<div class="small">${esc(q.hint)}</div>`:""}${coupleAnsBox(q)}</li>`).join("")}</ol>
       <button class="btn g" data-couple-drill="${esc(c.id)}" style="width:100%">▶ Quiz this topic</button></details>`).join("")}`;}
 let CQ=null;
-function startCoupleQuiz(catId){const all=coupleAllQ();const list=catId?all.filter(q=>q.cat===catId):shuffle(all.slice());
+function startCoupleQuiz(catId){if(typeof sessStart==="function")sessStart("couple");const all=coupleAllQ();const list=catId?all.filter(q=>q.cat===catId):shuffle(all.slice());
   CQ={list,i:0,asker:1,cat:catId||""};renderCoupleQuiz();}
 function renderCoupleQuiz(){const el=$("#cquizArea");if(!el)return;
   if(!CQ){const cats=coupleCats();
@@ -1620,6 +1769,8 @@ function renderCoupleQuiz(){const el=$("#cquizArea");if(!el)return;
   if($("#cqPrev"))$("#cqPrev").onclick=()=>{CQ.i=Math.max(0,CQ.i-1);renderCoupleQuiz();};
   if($("#cqSwitch"))$("#cqSwitch").onclick=()=>{CQ.asker=CQ.asker===1?2:1;renderCoupleQuiz();};
   if($("#cqMark"))$("#cqMark").onclick=()=>{S.coupleReview=S.coupleReview||[];const i=S.coupleReview.indexOf(q.id);if(i>=0)S.coupleReview.splice(i,1);else S.coupleReview.push(q.id);save();renderCoupleQuiz();};
+  if(typeof sessPush==="function"&&!SESS.items.some(it=>it.id===q.id))sessPush({id:q.id,ok:null,how:"couple"});
+  if(typeof sessSave==="function")sessSave();if(typeof sessSyncNav==="function")sessSyncNav();
   if(typeof canAutoRead==="function"?canAutoRead():S.auto)speakItems([{text:q.q}]);}
 function renderCoupleDocs(){const docs=coupleDocs();S.coupleDocs=S.coupleDocs||{};
   const groups=[...new Set(docs.map(d=>d.group))];
@@ -1802,13 +1953,14 @@ const EXTGO={speak:speakIntro,report:renderReport,groups:renderGroups,choose:ren
 
 // ---------- keyboard ----------
 document.addEventListener("keydown",e=>{if(e.target.matches("input,textarea,select"))return;const on=document.querySelector(".view.on").id;
-  if(on==="v-flash"){if(e.key===" "){e.preventDefault();flipFlash();}if(e.key==="ArrowRight")flashAnswer(true);if(e.key==="ArrowLeft")flashAnswer(false);}
+  if(on==="v-flash"){if(typeof sessInReview==="function"&&sessInReview()){if(e.key==="ArrowLeft"){e.preventDefault();sessBack();}if(e.key==="ArrowRight"){e.preventDefault();sessForward();}return;}if(e.key===" "){e.preventDefault();flipFlash();}if(e.key==="ArrowRight")flashAnswer(true);if(e.key==="ArrowLeft")flashAnswer(false);}
   if((on==="v-quiz"||on==="v-mock")&&A&&!A.done&&A.opts){const k="1234abcd".indexOf(e.key.toLowerCase());if(k>=0)chooseOpt(k%4);}});
 
 // ---------- init ----------
 load();if(typeof applyTheme==="function")applyTheme();if(canSpeak)syncReadBtn();else if($("#sndBtn"))$("#sndBtn").style.display="none";
 refreshStats();chips();updateHome();
-window.__civics={count:DATA.length,DATA,S:()=>S,SUGGESTED,GROUPS,COUPLE,myPicks,suggestedPicks,togglePick,picksAreSuggested,openSection,setAuto,stopSpeech,speakItems,readCivics,autoReadQuestion,autoReadFlashBack,autoReadFeedback,pickSpeech,answersSpeech,
+if(typeof sessLoad==="function"){sessLoad();const boot=location.hash.slice(1);const mode=SESS&&SESS.mode;const view=mode==="final"||mode==="review"||mode==="quiz"?"quiz":mode==="couple"?"couplequiz":mode;if(mode&&(boot===view||boot===mode||(boot==="review"&&mode==="review")))SESS_WANT_RESTORE=true;}
+window.__civics={count:DATA.length,DATA,S:()=>S,SUGGESTED,GROUPS,COUPLE,myPicks,suggestedPicks,togglePick,picksAreSuggested,openSection,setAuto,stopSpeech,speakItems,readCivics,autoReadQuestion,autoReadFlashBack,autoReadFeedback,pickSpeech,answersSpeech,sess:()=>SESS,sessStart,sessPush,sessBack,sessForward,sessShow,sessExitReview,auJump,auHasQStops,auNudge,
   coupleAns:typeof coupleAns==="function"?coupleAns:undefined,coupleGet:typeof coupleGet==="function"?coupleGet:undefined,coupleNote:typeof coupleNote==="function"?coupleNote:undefined,
   syncBuild:typeof syncBuild==="function"?syncBuild:undefined,syncEncode:typeof syncEncode==="function"?syncEncode:undefined,syncDecode:typeof syncDecode==="function"?syncDecode:undefined,
   syncMerge:typeof syncMerge==="function"?syncMerge:undefined,syncPreview:typeof syncPreview==="function"?syncPreview:undefined};
