@@ -96,8 +96,10 @@ h2{font-size:1.15rem;margin:18px 4px 10px}
 .fc{position:relative;width:100%;min-height:330px;transition:transform .55s cubic-bezier(.3,.7,.3,1.2);transform-style:preserve-3d;cursor:pointer}
 .fc.flipped{transform:rotateY(180deg)}
 .face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:var(--r);padding:20px;box-shadow:0 6px 20px #0000001f;overflow:auto;display:flex;flex-direction:column}
-.front{background:linear-gradient(160deg,#fff,#edf2ff)}
-.bface{background:linear-gradient(160deg,#fff,#ebfbee);transform:rotateY(180deg)}
+.front{background:linear-gradient(160deg,#fff,#edf2ff);pointer-events:auto}
+.fc.flipped .front{pointer-events:none}
+.bface{background:linear-gradient(160deg,#fff,#ebfbee);transform:rotateY(180deg);pointer-events:none}
+.fc.flipped .bface{pointer-events:auto}
 .face .hint{margin-top:auto;text-align:center;color:var(--mute);font-size:.85rem;padding-top:10px}
 .ans{font-size:1.05rem}
 .mine-box{background:#fff9db;border:2px dashed #fcc419;border-radius:14px;padding:12px;margin-top:10px}
@@ -280,11 +282,13 @@ html[data-theme=dark] .finalp.feat{box-shadow:0 6px 18px #0008}
 /* my picks + shared answers */
 .m7{background:linear-gradient(135deg,#0a4d5c,#0b6274)}
 .pickul{list-style:none;padding-left:0;margin:6px 0 0}
-.pickul li{display:flex;align-items:flex-start;gap:8px;padding:7px 8px;border-radius:12px;margin:4px 0}
+.pickul li{display:flex;align-items:center;gap:8px;padding:10px 10px;border-radius:12px;margin:6px 0;min-height:52px;cursor:pointer;touch-action:manipulation;-webkit-user-select:none;user-select:none}
 .pickul li.pick{background:#fff3bf;border:1.5px solid #fcc419}
-.pickbtn{flex:none;background:transparent;color:#7a4b00;font-size:1.2rem;min-width:40px;height:40px;padding:0;line-height:1}
+.pickbtn{flex:none;display:inline-flex;align-items:center;justify-content:center;background:transparent;color:#7a4b00;font-size:1.45rem;min-width:44px;min-height:44px;width:44px;height:44px;padding:0;line-height:1;pointer-events:none}
+.pickans{flex:1;min-width:0}
 .pickpill{margin-left:auto;flex:none}
-.picktip{margin-top:8px}
+.pill.pickpill.mypick{background:#f59f00;color:#3d2a00;font-weight:800}
+.picktip{background:#fff9db;border-left:4px solid #fab005;border-radius:10px;padding:9px 11px;margin-top:10px;font-size:.92rem;color:var(--ink)}
 .pickline{margin-top:4px;color:#7a4b00}
 .gcard{background:var(--card);border-radius:14px;margin:8px 0;padding:12px 14px;box-shadow:0 1px 5px #0000000d}
 .gcard summary{cursor:pointer;min-height:44px}
@@ -295,6 +299,7 @@ html[data-theme=dark] .pickbtn{color:#ffe066}
 html[data-theme=dark] .pickline{color:#ffe066}
 html[data-theme=dark] .gcard{background:#1b2030;box-shadow:0 1px 5px #0006}
 html[data-theme=dark] .pill.pickpill{background:#4a3a00;color:#ffe066}
+html[data-theme=dark] .pill.pickpill.mypick{background:#f59f00;color:#1b1400}
 
 /* section chooser + couple interview */
 .chooser{display:flex;flex-direction:column;gap:14px;margin-top:8px}
@@ -571,19 +576,23 @@ function myPicks(q){const choices=pickChoices(q);const inChoices=p=>!choices.len
   const sug=suggestedPicks(q).filter(inChoices);if(sug.length)return sug;
   if(choices.length)return choices.slice(0,Math.max(1,q.need||1));
   return q.a.slice(0,Math.max(1,q.need||1));}
-function picksAreSuggested(q){const custom=S.picks&&S.picks[q.n];if(!custom||!custom.length)return true;return samePickSet(custom,suggestedPicks(q));}
-function pickLine(q){const p=myPicks(q);return p.length?`<div class="small pickline">⭐ ${p.map(a=>esc(display(a))).join(" · ")}${picksAreSuggested(q)?` <span class="pill pickpill">Suggested</span>`:""}</div>`:"";}
-function tipHTML(q){const pick=myPicks(q);const pickBit=pick.length?`<div class="tip picktip" data-picktip="${q.n}">⭐ <b>${picksAreSuggested(q)?"Suggested pick":"My pick"}:</b> ${pick.map(a=>esc(display(a))).join(" · ")}</div>`:"";return (q.tip?`<div class="tip">💡 <b>Memory tip:</b> ${esc(q.tip)}</div>`:"")+pickBit;}
+function picksAreSuggested(q){const custom=S.picks&&S.picks[q.n];if(!custom||!custom.length)return true;const choices=pickChoices(q);const inChoices=p=>!choices.length||choices.some(c=>samePick(c,p));const kept=custom.filter(inChoices);if(!kept.length)return true;return samePickSet(kept,suggestedPicks(q));}
+function pickLine(q){const p=myPicks(q);if(!p.length)return"";const mine=!picksAreSuggested(q);return `<div class="small pickline" data-pickline="${q.n}">⭐ ${p.map(a=>esc(display(a))).join(" · ")} <span class="pill pickpill${mine?" mypick":""}">${mine?"My pick":"Suggested"}</span></div>`;}
+function pickTipHTML(q){const pick=myPicks(q);if(!pick.length)return"";const mine=!picksAreSuggested(q);return `<div class="picktip" data-picktip="${q.n}">⭐ <b>${mine?"My pick":"Suggested pick"}:</b> ${pick.map(a=>esc(display(a))).join(" · ")}</div>`;}
+function tipHTML(q){return (q.tip?`<div class="tip">💡 <b>Memory tip:</b> ${esc(q.tip)}</div>`:"")+pickTipHTML(q);}
 function ansList(q,hi){const picks=myPicks(q),suggested=picksAreSuggested(q),choices=q.vary?pickChoices(q):q.a.slice();
   const scored=choices.map((a,i)=>({a,i,p:picks.some(x=>samePick(x,a))}));scored.sort((x,y)=>(y.p-x.p)||(x.i-y.i));
   const hit=a=>hi&&(hi.includes(a)||hi.includes(display(a)));
-  const lis=scored.map(({a,p})=>`<li class="${[p?"pick":"",hit(a)?"mine":""].filter(Boolean).join(" ")}"><button type="button" class="pickbtn" data-pick="${q.n}" data-ans="${encodeURIComponent(a)}" aria-pressed="${p}" title="${p?"Remove pick":"Set as my pick"}" onclick="event.stopPropagation()">${p?"⭐":"☆"}</button><span>${esc(a)}</span>${p?`<span class="pill pickpill">${suggested?"Suggested":"My pick"}</span>`:""}</li>`).join("");
+  const lis=scored.map(({a,p})=>`<li class="${[p?"pick":"",hit(a)?"mine":""].filter(Boolean).join(" ")}" data-pick="${q.n}" data-ans="${encodeURIComponent(a)}" role="button" tabindex="0" aria-pressed="${p}" title="${p?(suggested?"Suggested pick":"Tap to use the suggested pick again"):"Set as my pick"}"><span class="pickbtn" aria-hidden="true">${p?"⭐":"☆"}</span><span class="pickans">${esc(a)}</span>${p?`<span class="pill pickpill${suggested?"":" mypick"}">${suggested?"Suggested":"My pick"}</span>`:""}</li>`).join("");
   return `<div class="ansbox" data-pickbox="${q.n}"><ul class="pickul">${lis}</ul>${q.vary?`<div class="note">USCIS: ${esc(q.a.join(" "))}</div>`:""}${q.note?`<div class="note">${esc(q.note)}</div>`:""}${q.need>1?`<div class="note">👉 On the test, give <b>${q.need}</b> of these. Star your ${q.need} picks.</div>`:""}</div>`;}
-function togglePick(n,ans){const q=BYN[n];if(!q)return;const need=Math.max(1,Math.min(q.need||1,pickChoices(q).length||1));let cur=myPicks(q);const i=cur.findIndex(p=>samePick(p,ans));
-  if(i>=0){if(cur.length<=need)return;cur=cur.filter((_,j)=>j!==i);}else if(need===1)cur=[ans];else if(cur.length>=need)cur=cur.slice(0,-1).concat([ans]);else cur=cur.concat([ans]);
-  S.picks=S.picks||{};if(samePickSet(cur,suggestedPicks(q)))delete S.picks[n];else S.picks[n]=cur;save();
+function refreshPickUI(n){const q=BYN[n];if(!q)return;
   document.querySelectorAll(`[data-pickbox="${n}"]`).forEach(box=>{const wrap=document.createElement("div");wrap.innerHTML=ansList(q);box.replaceWith(wrap.firstElementChild);});
-  document.querySelectorAll(`[data-picktip="${n}"]`).forEach(el=>{const tmp=document.createElement("div");tmp.innerHTML=tipHTML(q);const neu=[...tmp.querySelectorAll("[data-picktip]")].pop();if(neu)el.replaceWith(neu);});}
+  document.querySelectorAll(`[data-picktip="${n}"]`).forEach(el=>{const tmp=document.createElement("div");tmp.innerHTML=pickTipHTML(q);if(tmp.firstElementChild)el.replaceWith(tmp.firstElementChild);});
+  document.querySelectorAll(`[data-pickline="${n}"]`).forEach(el=>{const tmp=document.createElement("div");tmp.innerHTML=pickLine(q);if(tmp.firstElementChild)el.replaceWith(tmp.firstElementChild);});}
+function togglePick(n,ans){const q=BYN[n];if(!q)return;const need=Math.max(1,Math.min(q.need||1,pickChoices(q).length||1));let cur=myPicks(q).slice();const i=cur.findIndex(p=>samePick(p,ans));
+  if(i>=0){if(picksAreSuggested(q))return;if(need===1||cur.length<=need){S.picks=S.picks||{};delete S.picks[n];save();refreshPickUI(n);return;}cur=cur.filter((_,j)=>j!==i);}
+  else if(need===1)cur=[ans];else if(cur.length>=need)cur=cur.slice(0,-1).concat([ans]);else cur=cur.concat([ans]);
+  S.picks=S.picks||{};if(samePickSet(cur,suggestedPicks(q)))delete S.picks[n];else S.picks[n]=cur;save();refreshPickUI(n);}
 function resetToSuggestedPicks(){if(!confirm("Reset all starred answers back to the suggested picks?"))return;S.picks={};save();const on=document.querySelector(".view.on");const id=on?on.id.slice(2):"home";
   if(id==="list")renderList();else if(id==="groups"&&typeof renderGroups==="function")renderGroups();else if(id==="flash"&&typeof fq!=="undefined"&&fq){const q=fq;$("#fBack").innerHTML=`<div class="qnum">Question ${q.n} · answer${q.a.length>1?"s":""}</div><div class="small" style="margin:4px 0 6px">${esc(q.q)}</div><div class="ans">${q.vary&&mineVal(q.n)?`${savedLine(q,"Your answer")}`:""}${ansList(q)}</div>${mineBox(q)}${tipHTML(q)}<div class="hint">Tap to flip back</div>`;}
   else if(id==="report"&&typeof renderReport==="function")renderReport();else go(id==="home"?"home":id);}
@@ -798,7 +807,11 @@ function go(v){stopTimer();if(typeof plStop==="function"&&PL.playing)plStop();if
 document.addEventListener("click",e=>{const b=e.target.closest("[data-go]");if(!b)return;go(b.dataset.go);if(b.dataset.go==="list"){if(e.target.closest("[data-playall]"))mainPlay();else if(e.target.closest("[data-restart]"))mainRestart();}});
 $("#homeBtn").onclick=()=>{const on=document.querySelector(".view.on");const id=on?on.id.slice(2):"choose";if(id==="home"||id==="marriage"||id==="choose")go("choose");else if(MARRY_VIEWS.includes(id))go("marriage");else go("home");};
 $("#resetBtn").onclick=()=>{if(confirm("Reset all progress (your local answers are kept)?")){const mine=S.mine,picks=S.picks||{},section=S.section,couple=S.couple||{},coupleDocs=S.coupleDocs||{},coupleReview=S.coupleReview||[],notice=S.notice||{};S=blank();S.mine=mine;S.picks=picks;S.section=section;S.couple=couple;S.coupleDocs=coupleDocs;S.coupleReview=coupleReview;S.notice=notice;save();refreshStats();go(section==="marriage"?"marriage":"home");}};
-document.addEventListener("click",e=>{const rp=e.target.closest("[data-reset-picks]");if(rp){e.preventDefault();resetToSuggestedPicks();return;}const pb=e.target.closest("[data-pick]");if(!pb)return;e.preventDefault();togglePick(+pb.dataset.pick,decodeURIComponent(pb.dataset.ans));});
+document.addEventListener("pointerdown",e=>{if(e.target.closest("[data-pick],[data-reset-picks]"))e.stopPropagation();},true);
+document.addEventListener("click",e=>{
+  const rp=e.target.closest("[data-reset-picks]");if(rp){e.preventDefault();e.stopPropagation();resetToSuggestedPicks();return;}
+  const pb=e.target.closest("[data-pick]");if(!pb)return;e.preventDefault();e.stopPropagation();togglePick(+pb.dataset.pick,decodeURIComponent(pb.dataset.ans));
+},true);
 
 // ---------- flashcards ----------
 let fq=null,fList=[];
@@ -809,7 +822,7 @@ function nextFlash(){const fc=$("#fc");fc.classList.remove("flipped");fq=nextQ(f
   $("#fFront").innerHTML=`${speakBtn(q)}<div class="qnum">Question ${q.n}</div><div>${pills(q)}</div><div class="qtext">${esc(q.q)}</div><div class="hint">👆 Tap to see the answer</div>`;
   $("#fBack").innerHTML=`<div class="qnum">Question ${q.n} · answer${q.a.length>1?"s":""}</div><div class="small" style="margin:4px 0 6px">${esc(q.q)}</div><div class="ans">${q.vary&&mineVal(q.n)?`${savedLine(q,"Your answer")}`:""}${ansList(q)}</div>${mineBox(q)}${tipHTML(q)}<div class="hint">Tap to flip back</div>`;},150);
   autoSay(q);}
-$("#fc").onclick=e=>{if(e.target.closest("input,button"))return;$("#fc").classList.toggle("flipped");};
+$("#fc").onclick=e=>{if(e.target.closest("input,button,a,label,textarea,.ansbox,.pickul,.pickbtn,.mine-box,.picktip,[data-pick]"))return;$("#fc").classList.toggle("flipped");};
 function flashAnswer(ok){if(!fq)return;record(fq.n,ok,{el:$("#fYes")});if(ok){buzz(20);}else buzz([30,40,30]);nextFlash();}
 $("#fYes").onclick=()=>flashAnswer(true);$("#fNo").onclick=()=>flashAnswer(false);
 
@@ -1033,7 +1046,7 @@ function endMock(){A=null;const pass=M.right>=M.passAt;const asked=M.res.length;
 // ---------- study list ----------
 function renderList(){const L=pool();$("#lMeta").textContent=`${filterLabel()} · ${L.length} questions`;let cat="";
   $("#listArea").innerHTML=L.map(q=>{const p=S.p[q.n];const col=!p||!p.seen?"#dee2e6":p.miss?"#ff8787":p.box>=MASTER_BOX?"#51cf66":"#ffd43b";const h=q.category!==cat?`<h2>${esc(q.section)} · ${esc(CAT_SHORT[q.category]||q.category)}</h2>`:"";cat=q.category;
-    return `${h}<details data-n="${q.n}"><summary><span class="lvl" style="background:${col}"></span>${q.n}. ${esc(q.q)} ${q.star?"<span class='pill star'>★</span>":""}${q.vary?"<span class='pill vary'>varies</span>":""}${p&&p.seen?"":"<span class='pill new'>🆕 not seen yet</span>"}</summary><div class="ans">${q.vary&&mineVal(q.n)?`${savedLine(q,"Your answer")}`:""}${ansList(q)}</div>${mineBox(q)}${q.tip?`<button class="link tipbtn" aria-expanded="false" onclick="const t=this.nextElementSibling;t.hidden=!t.hidden;this.setAttribute('aria-expanded',!t.hidden)">💡 Tip</button><div class="tip" hidden>${esc(q.tip)}</div>`:""}${canSpeak||AUDIO_BASE?`<div class="row" style="margin-top:8px"><button class="btn ghost" data-playfrom="${q.n}">▶ Play from here</button><button class="btn ghost" onclick="readOne(${q.n})">🔊 Read this one</button></div>`:""}</details>`;}).join("");
+    return `${h}<details data-n="${q.n}"><summary><span class="lvl" style="background:${col}"></span>${q.n}. ${esc(q.q)} ${q.star?"<span class='pill star'>★</span>":""}${q.vary?"<span class='pill vary'>varies</span>":""}${p&&p.seen?"":"<span class='pill new'>🆕 not seen yet</span>"}</summary><div class="ans">${q.vary&&mineVal(q.n)?`${savedLine(q,"Your answer")}`:""}${ansList(q)}</div>${mineBox(q)}${pickTipHTML(q)}${q.tip?`<button class="link tipbtn" aria-expanded="false" onclick="const t=this.nextElementSibling;t.hidden=!t.hidden;this.setAttribute('aria-expanded',!t.hidden)">💡 Tip</button><div class="tip" hidden>${esc(q.tip)}</div>`:""}${canSpeak||AUDIO_BASE?`<div class="row" style="margin-top:8px"><button class="btn ghost" data-playfrom="${q.n}">▶ Play from here</button><button class="btn ghost" onclick="readOne(${q.n})">🔊 Read this one</button></div>`:""}</details>`;}).join("");
   $("#plHost").innerHTML=AUDIO_BASE?`<details class="plfb" id="plFb"${AU.failed?" open":""}><summary>🗣 Or read with this device’s voice instead (no download; stops when the screen locks)</summary>${plBar()}</details>`:plBar();plWire();auWire();auInit();
   $("#heroPlay").onclick=mainToggle;$("#heroRestart").onclick=mainRestart;plStop();plBuild();plUI();const pq=PL.list[PL.idx];if(pq&&plOpts().pos){$("#plStatus").textContent=`Resume from Question ${pq.n} (${PL.idx+1}/${PL.list.length}) — press ▶`;}}
 // ---------- Study list: continuous "Play all" read-aloud ----------
@@ -1387,11 +1400,11 @@ function renderReport(){const cs=catStats();let R=0,W=0;cs.forEach(c=>{R+=c.r;W+
   const missed=DATA.filter(q=>S.p[q.n]&&S.p[q.n].wrong).sort((a,b)=>S.p[b.n].wrong-S.p[a.n].wrong||(S.p[a.n].right/(S.p[a.n].seen||1))-(S.p[b.n].right/(S.p[b.n].seen||1))).slice(0,10);
   const rec=recommend();const spk=S.speakRes||[];const sp=spk.slice(-1)[0];const spReal=spk.filter(r=>r.pass!=null);
   $("#repArea").innerHTML=`<div class="panel"><div class="tiles"><div class="tile"><b>${R+W}</b>civics answers</div><div class="tile"><b>${R+W?Math.round(100*R/(R+W))+"%":"–"}</b>accuracy</div><div class="tile"><b>${m}/128</b>mastered</div><div class="tile"><b>${mocks?(mocks.pass?"✅ ":"❌ ")+mocks.right+"/"+mocks.asked:"–"}</b>last mock interview</div></div></div>
-  <div class="panel"><h3 style="margin-top:0">🎯 Recommended next</h3>${rec.length?`<p class="small">${rec.length} questions picked from your misses, low-accuracy questions, and your weakest topic.</p><ol class="small" style="padding-left:22px">${rec.map(n=>`<li>${n}. ${esc(BYN[n].q)}${typeof pickLine==="function"?pickLine(BYN[n]):""}</li>`).join("")}</ol><button class="btn g" id="repGo" style="width:100%">▶ Practice these</button>`:"<p class=small>Nothing to recommend yet.</p>"}
+  <div class="panel"><h3 style="margin-top:0">🎯 Recommended next</h3>${rec.length?`<p class="small">${rec.length} questions picked from your misses, low-accuracy questions, and your weakest topic. Star an answer to use it everywhere.</p><ol class="small recqs" style="padding-left:22px">${rec.map(n=>`<li><div>${n}. ${esc(BYN[n].q)}${typeof pickLine==="function"?pickLine(BYN[n]):""}</div>${typeof ansList==="function"?ansList(BYN[n]):""}</li>`).join("")}</ol><button class="btn g" id="repGo" style="width:100%">▶ Practice these</button>`:"<p class=small>Nothing to recommend yet.</p>"}
 </div>
   ${coverageHTML(cs)}
   <div class="panel"><h3 style="margin-top:0">📈 Last 30 days</h3>${chartSVG()}</div>
-  <div class="panel"><h3 style="margin-top:0">❗ Most missed</h3>${missed.length?missed.map(q=>`<div class="mm"><span class="c">✗${S.p[q.n].wrong} ✓${S.p[q.n].right}</span><span>${q.n}. ${esc(q.q)}${typeof pickLine==="function"?pickLine(q):""}</span></div>`).join(""):"<p class=small>No misses yet.</p>"}</div>
+  <div class="panel"><h3 style="margin-top:0">❗ Most missed</h3>${missed.length?missed.map(q=>`<div class="mm"><span class="c">✗${S.p[q.n].wrong} ✓${S.p[q.n].right}</span><div><div>${q.n}. ${esc(q.q)}${typeof pickLine==="function"?pickLine(q):""}</div>${typeof ansList==="function"?ansList(q):""}</div></div>`).join(""):"<p class=small>No misses yet.</p>"}</div>
   <div class="panel"><h3 style="margin-top:0">🗣️ Speaking practice</h3>
    <p class="small">${sp?`Last session: ${sp.right}/${sp.asked} correct${sp.pass==null?" (practice)":sp.pass?" ✅ passed":" ❌ not yet"}. Real-test sessions: ${spReal.filter(r=>r.pass).length}/${spReal.length} passed.`:"No speaking sessions yet."}</p>${spk.length?`<p class="small">Recent: ${spk.slice(-5).reverse().map(r=>`${r.pass==null?"🗣️":r.pass?"✅":"❌"} ${r.right}/${r.asked}`).join(" · ")}</p>`:""}<button class="btn ghost" data-go="speak" style="width:100%">🗣️ Speaking practice</button></div>`;
   if($("#repGo"))$("#repGo").onclick=()=>startCustom(rec,"🎯 Recommended set");}
@@ -1403,7 +1416,7 @@ function renderGroups(){
     <button class="btn ghost" data-reset-picks style="width:100%">↺ Reset to suggested picks</button></div>
     ${list.map(g=>{const qs=g.qs.map(n=>BYN[n]).filter(Boolean);
       return `<details class="gcard" data-gid="${esc(g.id)}"><summary><b>${esc(g.answer)}</b> <span class="pill">${qs.length} question${qs.length===1?"":"s"}</span>${g.detail&&g.detail!==g.answer?`<div class="small">${esc(g.detail)}</div>`:""}</summary>
-        <ol class="gqs">${qs.map(q=>`<li><b>Q${q.n}.</b> ${esc(q.q)}${typeof pickLine==="function"?pickLine(q):""}</li>`).join("")}</ol>
+        <ol class="gqs">${qs.map(q=>`<li><b>Q${q.n}.</b> ${esc(q.q)}${typeof pickLine==="function"?pickLine(q):""}${typeof ansList==="function"?ansList(q):""}</li>`).join("")}</ol>
         <button class="btn g" data-practice-group="${esc(g.id)}" style="width:100%;margin-top:8px">▶ Practice this group</button></details>`;}).join("")}`;}
 document.addEventListener("click",e=>{const b=e.target.closest("[data-practice-group]");if(!b)return;const g=(GROUPS||[]).find(x=>x.id===b.dataset.practiceGroup);if(g)startCustom(g.qs,"🔗 "+g.answer,{seq:true});});
 
@@ -1604,7 +1617,9 @@ function syncBuild(st){st=st||S;const answers={};
   }
   const notice={};for(const k of Object.keys(st.notice||{}))if(st.notice[k])notice[k]=true;
   const docs={};for(const k of Object.keys(st.coupleDocs||{}))if(st.coupleDocs[k])docs[k]=true;
-  return {v:1,t:Date.now(),answers,notice,docs};}
+  const picks={};const src=st.picks||{};
+  for(const k of Object.keys(src)){const arr=src[k];if(arr&&arr.length)picks[k]=arr.slice();}
+  return {v:1,t:Date.now(),answers,notice,docs,picks};}
 function syncPreview(payload){if(!payload)return {answers:0,checks:0};
   const answers=Object.keys(payload.answers||{}).filter(id=>{const a=payload.answers[id]||{};return (a.answer&&String(a.answer).trim())||(a.notes&&String(a.notes).trim());}).length;
   const checks=Object.values(payload.notice||{}).filter(Boolean).length+Object.values(payload.docs||{}).filter(Boolean).length;
@@ -1654,6 +1669,8 @@ function syncMerge(state,payload){state=state||S;if(!payload)return {answers:0,c
   }
   for(const k of Object.keys(payload.notice||{}))if(payload.notice[k])state.notice[k]=true;
   for(const k of Object.keys(payload.docs||{}))if(payload.docs[k])state.coupleDocs[k]=true;
+  state.picks=state.picks||{};
+  for(const k of Object.keys(payload.picks||{})){const arr=payload.picks[k];if(arr&&arr.length)state.picks[k]=arr.slice();}
   const prev=syncPreview(payload);
   return {answers:prev.answers,checks:prev.checks,conflicts};}
 function syncLink(encoded){const base=location.origin&&location.origin!=="null"?location.origin:"";
@@ -1704,7 +1721,7 @@ document.addEventListener("keydown",e=>{if(e.target.matches("input,textarea,sele
 // ---------- init ----------
 load();if(typeof applyTheme==="function")applyTheme();if(canSpeak)$("#sndBtn").textContent=S.auto?"🔊":"🔈";else $("#sndBtn").style.display="none";
 refreshStats();chips();updateHome();
-window.__civics={count:DATA.length,DATA,S:()=>S,SUGGESTED,GROUPS,COUPLE,myPicks,suggestedPicks,openSection,
+window.__civics={count:DATA.length,DATA,S:()=>S,SUGGESTED,GROUPS,COUPLE,myPicks,suggestedPicks,togglePick,picksAreSuggested,openSection,
   coupleAns:typeof coupleAns==="function"?coupleAns:undefined,coupleGet:typeof coupleGet==="function"?coupleGet:undefined,coupleNote:typeof coupleNote==="function"?coupleNote:undefined,
   syncBuild:typeof syncBuild==="function"?syncBuild:undefined,syncEncode:typeof syncEncode==="function"?syncEncode:undefined,syncDecode:typeof syncDecode==="function"?syncDecode:undefined,
   syncMerge:typeof syncMerge==="function"?syncMerge:undefined,syncPreview:typeof syncPreview==="function"?syncPreview:undefined};
