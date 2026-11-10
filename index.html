@@ -27,6 +27,14 @@ header .top{display:flex;align-items:center;gap:10px;max-width:680px;margin:0 au
 header h1{font-size:1.2rem;margin:0;flex:1;line-height:1.2}
 header h1 small{display:block;font-weight:400;opacity:.85;font-size:.78rem}
 .iconbtn{background:#ffffff26;color:#fff;min-width:48px;height:48px;font-size:1.3rem;display:inline-flex;align-items:center;justify-content:center}
+.readtoggle{gap:6px;padding:0 10px;min-width:auto;font-size:.75rem;font-weight:800}
+.readtoggle .readlab{white-space:nowrap}
+.readtoggle.on{background:#fff;color:var(--blue)}
+.readthis{background:#e7ebff;color:var(--blue);min-width:40px;width:40px;height:40px;padding:0;font-size:1.15rem;border-radius:12px;flex:none;line-height:1}
+html[data-theme=dark] .readthis{background:#2a3350;color:#91a7ff}
+.gqs li .readthis, .recqs li .readthis, .mm .readthis, .cqitem .readthis, .note-card .readthis, .tip-card .readthis, .docrow .readthis{float:right;margin:0 0 8px 8px}
+.top h1{min-width:0}
+@media (max-width:340px){.readtoggle .readlab{display:none}}
 .stats{display:flex;gap:8px;max-width:680px;margin:12px auto 0}
 .stat{flex:1;background:#ffffff22;border-radius:14px;padding:8px 6px;text-align:center}
 .stat b{display:block;font-size:1.25rem}
@@ -372,7 +380,7 @@ html[data-theme=dark] .syncbox{background:#1b2030;color:#e9ecef}
   <div class="top">
     <button class="iconbtn" id="homeBtn" aria-label="Home">🏠</button>
     <h1>🇺🇸 Civics 128<small>U.S. citizenship test practice · 2025 version</small></h1>
-    <button class="iconbtn" id="sndBtn" aria-label="Toggle auto read-aloud" title="Auto read-aloud">🔈</button>
+    <button class="iconbtn readtoggle" id="sndBtn" aria-pressed="false" aria-label="Read aloud" title="Read aloud in every game and section"><span class="readico" aria-hidden="true">🔈</span><span class="readlab">Read aloud</span></button>
   </div>
   <div class="stats">
     <div class="stat"><b id="sMast">0</b><span>Mastered /128</span></div>
@@ -451,7 +459,7 @@ html[data-theme=dark] .syncbox{background:#1b2030;color:#e9ecef}
     <div class="small"><b>Answer by:</b></div>
     <div class="chips" id="qModes" style="margin:6px 0"></div>
     <div class="warn" id="srWarn" hidden>🎙️ Voice answers aren’t supported in this browser. Try Chrome on Android/desktop or Safari on iPhone. You’ll get a text box instead.</div>
-    <label class="switch"><input type="checkbox" class="autoToggle"> 🔊 Read questions aloud automatically</label>
+    <label class="switch"><input type="checkbox" class="autoToggle"> 🔊 Read aloud automatically</label>
     <div class="row" style="justify-content:space-between">
       <label class="switch"><input type="checkbox" id="timerOn"> ⏱️ Timer</label>
       <select id="timerSec" aria-label="Seconds per question"><option value="10">10 sec</option><option value="20">20 sec</option><option value="30">30 sec</option><option value="45">45 sec</option></select>
@@ -602,12 +610,58 @@ document.addEventListener("input",e=>{const n=e.target.dataset&&e.target.dataset
 
 // ---------- speech ----------
 const canSpeak="speechSynthesis" in window;
-let SPV=null;function pickVoice(){if(SPV||!canSpeak)return;try{const v=speechSynthesis.getVoices().filter(x=>/^en[-_]US/i.test(x.lang));SPV=v.find(x=>x.default)||v.find(x=>x.localService)||v[0]||null;}catch(e){}}
+const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent||"")||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
+let SPV=null,SAYT=0,SAY_AUD=null,SPEAK_OK=!isIOS;
+function pickVoice(){if(!canSpeak)return;try{const all=speechSynthesis.getVoices()||[];const en=all.filter(x=>/^en([-_]|$)/i.test(x.lang));const us=en.filter(x=>/US/i.test(x.lang));const pool=us.length?us:(en.length?en:all);
+  SPV=pool.find(v=>/Samantha/i.test(v.name))||pool.find(v=>v.localService&&/Serena|Karen|Moira|Tessa|Samantha/i.test(v.name))||pool.find(v=>v.default)||pool.find(v=>v.localService)||pool[0]||null;}catch(e){}}
 if(canSpeak){pickVoice();try{speechSynthesis.addEventListener("voiceschanged",pickVoice);}catch(e){}}
-function say(t){if(!canSpeak)return;try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang="en-US";pickVoice();if(SPV)u.voice=SPV;u.rate=.95;speechSynthesis.speak(u);}catch(e){}}
-function speakBtn(q){return canSpeak?`<button class="speak" aria-label="Read aloud" onclick="event.stopPropagation();sayQ(${q.n})">🔊</button>`:"";}
-$("#sndBtn").onclick=()=>{if(!canSpeak){alert("Read-aloud isn’t supported in this browser.");return;}setAuto(!S.auto);if(S.auto)say("Auto read aloud is on.");};
-function autoSay(q){if(S.auto)sayQ(q.n);}
+function micLive(){return !!(typeof rec!=="undefined"&&rec);}
+function clipUrl(id){const base=(typeof CLIP_BASE!=="undefined"&&CLIP_BASE)||(typeof AUDIO_BASE!=="undefined"&&AUDIO_BASE?AUDIO_BASE+"clips/":null);return base&&id?base+id+".mp3":null;}
+function stopSpeech(){SAYT++;if(SAY_AUD){try{SAY_AUD.pause();SAY_AUD.removeAttribute("src");}catch(e){}}if(typeof stopClip==="function")try{stopClip();}catch(e){}if(canSpeak)try{speechSynthesis.cancel();}catch(e){}}
+function speakText(text,done,tok){if(!text||!canSpeak||tok!==SAYT){if(done)done();return;}
+  try{const u=new SpeechSynthesisUtterance(String(text));u.lang="en-US";pickVoice();try{if(SPV)u.voice=SPV;}catch(e){}u.rate=.95;
+    u.onend=()=>{if(tok===SAYT&&done)done();};u.onerror=()=>{if(tok===SAYT&&done)done();};speechSynthesis.speak(u);}catch(e){if(done)done();}}
+function playQClip(id,text,done,tok){if(tok!==SAYT)return;if(window.__FORCE_TTS)return speakText(text,done,tok);const url=clipUrl(id);if(!url)return speakText(text,done,tok);
+  if(!SAY_AUD){SAY_AUD=new Audio();SAY_AUD.preload="auto";SAY_AUD.setAttribute("playsinline","");}
+  const a=SAY_AUD;const finish=()=>{if(tok!==SAYT)return;a.onended=a.onerror=null;if(done)done();};
+  a.onended=finish;a.onerror=()=>speakText(text,done,tok);a.src=url;
+  const p=a.play();if(p&&p.catch)p.catch(err=>{if(err&&err.name==="AbortError")return;if(err&&err.name==="NotAllowedError")finish();else speakText(text,done,tok);});}
+function speakItems(items){if(!items||!items.length)return;if(micLive())return;
+  const tok=++SAYT;if(SAY_AUD){try{SAY_AUD.pause();}catch(e){}}if(typeof stopClip==="function")try{stopClip();}catch(e){}
+  const main=document.getElementById("aud");if(main&&!main.paused)main.pause();if(typeof PL!=="undefined"&&PL.playing&&typeof plStop==="function")plStop();
+  if(canSpeak)try{speechSynthesis.cancel();}catch(e){}
+  if(typeof window.__sayLog!=="undefined")items.forEach(it=>{if(it&& (it.text||it.clip))window.__sayLog.push(it.text||it.clip);});
+  const run=i=>{if(tok!==SAYT||i>=items.length||micLive())return;const it=items[i]||{},next=()=>{if(tok===SAYT)run(i+1);};
+    if(it.clip)playQClip(it.clip,it.text||"",next,tok);else speakText(it.text||"",next,tok);};
+  run(0);}
+function say(t){if(!t)return;speakItems([{text:t}]);}
+function pickSpeech(q){const p=typeof myPicks==="function"?myPicks(q):[];if(!p.length)return"";const label=(typeof picksAreSuggested==="function"&&picksAreSuggested(q))?"Suggested pick":"My pick";return label+": "+p.map(display).join(", ")+".";}
+function answersSpeech(q){const all=(q.vary&&typeof pickChoices==="function"?pickChoices(q):q.a).map(display);const picks=(typeof myPicks==="function"?myPicks(q):[]).map(display);
+  let t=pickSpeech(q);const rest=all.filter(a=>!picks.some(x=>samePick(x,a)));if(rest.length)t+=" All accepted answers: "+all.join(", ")+".";return t;}
+function qSpeechItems(q,kind){const items=[];if(!q)return items;
+  if(kind!=="fb"&&kind!=="answers")items.push({clip:"sq"+q.n,text:"Question "+q.n+". "+q.q});
+  if(kind==="fb"){items.push({text:pickSpeech(q)+" "+answersSpeech(q)});}
+  else if(kind==="answers")items.push({text:answersSpeech(q)});
+  else if(kind==="full"||kind==="qpick")items.push({text:pickSpeech(q)});
+  return items.filter(it=>it.text||it.clip);}
+function readCivics(q,kind){if(!q)return;SPEAK_OK=true;speakItems(qSpeechItems(q,kind||"full"));}
+function canAutoRead(){return !!(S.auto&&SPEAK_OK&&!micLive());}
+function autoReadQuestion(q,opts){if(!canAutoRead()||!q)return;speakItems(qSpeechItems(q,(opts&&opts.withPick)?"qpick":"q"));}
+function autoReadFlashBack(q){if(!canAutoRead()||!q)return;speakItems(qSpeechItems(q,"answers"));}
+function autoReadFeedback(q,ok,info){if(!canAutoRead()||!q)return;const lead=info&&info.timeout?"Time's up.":ok?"Correct.":"Not quite.";speakItems([{text:lead+" "+pickSpeech(q)}]);}
+function readThisBtn(attrs,label){if(!canSpeak&&!(typeof AUDIO_BASE!=="undefined"&&AUDIO_BASE))return"";return `<button type="button" class="readthis" ${attrs} aria-label="${esc(label||"Read this")}" title="Read this">🔊</button>`;}
+function speakBtn(q){return (canSpeak||(typeof AUDIO_BASE!=="undefined"&&AUDIO_BASE))?`<button type="button" class="speak readthis" data-read-q="${q.n}" aria-label="Read this question">🔊</button>`:"";}
+function currentReadItems(){const on=document.querySelector(".view.on");const id=on&&on.id;
+  if(id==="v-flash"&&typeof fq!=="undefined"&&fq)return $("#fc")&&$("#fc").classList.contains("flipped")?qSpeechItems(fq,"answers"):qSpeechItems(fq,"q");
+  if((id==="v-quiz"||id==="v-mock")&&typeof A!=="undefined"&&A&&A.q)return A.done?qSpeechItems(A.q,"fb"):qSpeechItems(A.q,"q");
+  if(id==="v-speak"&&typeof SP!=="undefined"&&SP&&SP.cur)return qSpeechItems(SP.cur,A&&A.done?"fb":"q");
+  if(id==="v-couplequiz"&&typeof CQ!=="undefined"&&CQ&&CQ.list&&CQ.list[CQ.i]){const q=CQ.list[CQ.i];return [{text:q.q+(q.hint?"": "")}];}
+  return [];}
+function syncReadBtn(){const b=$("#sndBtn");if(!b)return;const on=!!S.auto;b.classList.toggle("on",on);b.setAttribute("aria-pressed",on?"true":"false");b.setAttribute("aria-label",on?"Read aloud on":"Read aloud off");
+  const ico=b.querySelector(".readico");if(ico)ico.textContent=on?"🔊":"🔈";else b.textContent=on?"🔊":"🔈";
+  document.querySelectorAll(".autoToggle").forEach(x=>x.checked=on);}
+$("#sndBtn").onclick=()=>{if(!canSpeak){alert("Read-aloud isn’t supported in this browser.");return;}SPEAK_OK=true;setAuto(!S.auto);if(S.auto)speakItems([{text:"Read aloud is on."}].concat(currentReadItems()));else{stopSpeech();}};
+function autoSay(q){autoReadQuestion(q);}
 
 // ---------- fx ----------
 const cv=$("#confetti"),cx=cv.getContext("2d");let parts=[],raf=0;
@@ -801,13 +855,40 @@ function syncChrome(){document.documentElement.removeAttribute("data-start");con
   if(choose)h1.innerHTML=`🇺🇸 Interview prep<small>Civics test and couple interview</small>`;
   else if(marry)h1.innerHTML=`💑 Couple interview<small>Marriage questions, documents, and tips</small>`;
   else h1.innerHTML=`🇺🇸 Civics 128<small>U.S. citizenship test practice · 2025 version</small>`;}
-function go(v){stopTimer();if(typeof plStop==="function"&&PL.playing)plStop();if(typeof stopListen==="function")stopListen();if(typeof stopClip==="function")stopClip();A=null;if(canSpeak)speechSynthesis.cancel();document.querySelectorAll(".view").forEach(x=>x.classList.remove("on"));
+function go(v){stopTimer();if(typeof plStop==="function"&&PL.playing)plStop();if(typeof stopListen==="function")stopListen();if(typeof stopSpeech==="function")stopSpeech();else if(canSpeak)try{speechSynthesis.cancel();}catch(e){}A=null;document.querySelectorAll(".view").forEach(x=>x.classList.remove("on"));
   if(v==="flash")startFlash();else if(v==="quiz")startQuiz(false);else if(v==="review")startQuiz(true);else if(v==="mock")mockIntro();else if(v==="list")renderList();else if(v==="mine")renderMine();else if(typeof EXTGO!=="undefined"&&EXTGO[v])EXTGO[v]();else{v="home";updateHome();chips();}
   rememberSection(v);const node=$("#v-"+(v==="review"?"quiz":v));if(node)node.classList.add("on");scrollTo(0,0);location.hash=v==="home"?"":v;syncChrome();}
 document.addEventListener("click",e=>{const b=e.target.closest("[data-go]");if(!b)return;go(b.dataset.go);if(b.dataset.go==="list"){if(e.target.closest("[data-playall]"))mainPlay();else if(e.target.closest("[data-restart]"))mainRestart();}});
 $("#homeBtn").onclick=()=>{const on=document.querySelector(".view.on");const id=on?on.id.slice(2):"choose";if(id==="home"||id==="marriage"||id==="choose")go("choose");else if(MARRY_VIEWS.includes(id))go("marriage");else go("home");};
 $("#resetBtn").onclick=()=>{if(confirm("Reset all progress (your local answers are kept)?")){const mine=S.mine,picks=S.picks||{},section=S.section,couple=S.couple||{},coupleDocs=S.coupleDocs||{},coupleReview=S.coupleReview||[],notice=S.notice||{};S=blank();S.mine=mine;S.picks=picks;S.section=section;S.couple=couple;S.coupleDocs=coupleDocs;S.coupleReview=coupleReview;S.notice=notice;save();refreshStats();go(section==="marriage"?"marriage":"home");}};
-document.addEventListener("pointerdown",e=>{if(e.target.closest("[data-pick],[data-reset-picks]"))e.stopPropagation();},true);
+document.addEventListener("pointerdown",e=>{if(e.target.closest("[data-pick],[data-reset-picks],[data-read-q],[data-read-fb],[data-read-couple],[data-read-tip],[data-read-note],[data-read-text],[data-read-doc],[data-read-notice]"))e.stopPropagation();},true);
+document.addEventListener("click",e=>{
+  if(!canAutoRead())return;
+  if(e.target.closest("[data-read-q],[data-read-fb],[data-read-couple],[data-read-tip],[data-read-note],[data-read-text],[data-read-doc],[data-read-notice],[data-pick],button,a,input,textarea,label,summary"))return;
+  const row=e.target.closest(".gqs li, .recqs li, .mm, .cqitem, .note-card, .tip-card");
+  if(!row)return;
+  const b=row.querySelector("[data-read-q],[data-read-fb],[data-read-couple],[data-read-tip],[data-read-note],[data-read-doc],[data-read-notice]");
+  if(b){e.preventDefault();SPEAK_OK=true;b.click();}
+},true);
+document.addEventListener("click",e=>{
+  const b=e.target.closest("[data-read-q],[data-read-fb],[data-read-couple],[data-read-tip],[data-read-note],[data-read-text]");
+  if(!b)return;e.preventDefault();e.stopPropagation();SPEAK_OK=true;
+  if(b.dataset.readQ){const q=BYN[+b.dataset.readQ];if(q)readCivics(q,"full");}
+  else if(b.dataset.readFb){const q=BYN[+b.dataset.readFb];if(q)readCivics(q,"fb");}
+  else if(b.dataset.readCouple&&typeof coupleFind==="function"){const q=coupleFind(b.dataset.readCouple);if(q)speakItems([{text:q.q+(q.hint?". Hint: "+q.hint:".")}]);}
+  else if(b.dataset.readTip!=null&&typeof coupleTips==="function"){const tip=coupleTips()[+b.dataset.readTip];if(tip)speakItems([{text:tip.title+". "+tip.body}]);}
+  else if(b.dataset.readNote&&typeof coupleNotes==="function"){const n=(coupleNotes()||[]).find(x=>x.id===b.dataset.readNote);if(n)speakItems([{text:(n.title||"")+". "+(n.body||"")}]);}
+  else if(b.dataset.readDoc&&typeof coupleDocs==="function"){const d=coupleDocs().find(x=>x.id===b.dataset.readDoc);if(d)speakItems([{text:d.item+". "+(d.note||"")}]);}
+  else if(b.dataset.readNotice&&typeof coupleNotice==="function"){const d=(coupleNotice().items||[]).find(x=>x.id===b.dataset.readNotice);if(d)speakItems([{text:d.item+". "+(d.note||"")}]);}
+  else if(b.dataset.readText)speakItems([{text:decodeURIComponent(b.dataset.readText)}]);
+},true);
+document.addEventListener("toggle",e=>{
+  const d=e.target;if(!d||d.tagName!=="DETAILS"||!d.open||!canAutoRead())return;
+  if(d.dataset.n&&BYN[+d.dataset.n])autoReadQuestion(BYN[+d.dataset.n],{withPick:true});
+  else if(d.dataset.cid&&typeof coupleCats==="function"){const c=coupleCats().find(x=>x.id===d.dataset.cid);if(c)speakItems([{text:(c.title||"")+". "+(c.blurb||(c.questions.length+" questions."))}]);}
+  else if(d.classList.contains("gcard")){const ans=d.querySelector("summary b");speakItems([{text:"Shared answer: "+(ans?ans.textContent.trim():"")}]);}
+  else if(d.classList.contains("unseen")){const n=d.querySelectorAll("li").length;speakItems([{text:n+" questions in this topic have not been seen yet. Tap the speaker on a question to hear it."}]);}
+},true);
 document.addEventListener("click",e=>{
   const rp=e.target.closest("[data-reset-picks]");if(rp){e.preventDefault();e.stopPropagation();resetToSuggestedPicks();return;}
   const pb=e.target.closest("[data-pick]");if(!pb)return;e.preventDefault();e.stopPropagation();togglePick(+pb.dataset.pick,decodeURIComponent(pb.dataset.ans));
@@ -816,13 +897,14 @@ document.addEventListener("click",e=>{
 // ---------- flashcards ----------
 let fq=null,fList=[];
 function startFlash(){fList=pool();recent=[];nextFlash();}
-function nextFlash(){const fc=$("#fc");fc.classList.remove("flipped");fq=nextQ(fList);const q=fq;
+function nextFlash(){if(typeof stopSpeech==="function")stopSpeech();const fc=$("#fc");fc.classList.remove("flipped");fq=nextQ(fList);const q=fq;
   $("#fMeta").textContent=`${filterLabel()} · ${fList.filter(x=>mastered(x.n)).length}/${fList.length} mastered`;
   setTimeout(()=>{
   $("#fFront").innerHTML=`${speakBtn(q)}<div class="qnum">Question ${q.n}</div><div>${pills(q)}</div><div class="qtext">${esc(q.q)}</div><div class="hint">👆 Tap to see the answer</div>`;
-  $("#fBack").innerHTML=`<div class="qnum">Question ${q.n} · answer${q.a.length>1?"s":""}</div><div class="small" style="margin:4px 0 6px">${esc(q.q)}</div><div class="ans">${q.vary&&mineVal(q.n)?`${savedLine(q,"Your answer")}`:""}${ansList(q)}</div>${mineBox(q)}${tipHTML(q)}<div class="hint">Tap to flip back</div>`;},150);
+  $("#fBack").innerHTML=`${readThisBtn('data-read-fb="'+q.n+'"','Read the answer')}<div class="qnum">Question ${q.n} · answer${q.a.length>1?"s":""}</div><div class="small" style="margin:4px 0 6px">${esc(q.q)}</div><div class="ans">${q.vary&&mineVal(q.n)?`${savedLine(q,"Your answer")}`:""}${ansList(q)}</div>${mineBox(q)}${tipHTML(q)}<div class="hint">Tap to flip back</div>`;},150);
   autoSay(q);}
-$("#fc").onclick=e=>{if(e.target.closest("input,button,a,label,textarea,.ansbox,.pickul,.pickbtn,.mine-box,.picktip,[data-pick]"))return;$("#fc").classList.toggle("flipped");};
+function flipFlash(){const on=$("#fc").classList.toggle("flipped");if(on&&fq)autoReadFlashBack(fq);else if(!on&&fq)autoReadQuestion(fq);}
+$("#fc").onclick=e=>{if(e.target.closest("input,button,a,label,textarea,.ansbox,.pickul,.pickbtn,.mine-box,.picktip,[data-pick],[data-read-q],[data-read-fb]"))return;flipFlash();};
 function flashAnswer(ok){if(!fq)return;record(fq.n,ok,{el:$("#fYes")});if(ok){buzz(20);}else buzz([30,40,30]);nextFlash();}
 $("#fYes").onclick=()=>flashAnswer(true);$("#fNo").onclick=()=>flashAnswer(false);
 
@@ -909,8 +991,8 @@ document.addEventListener("click",e=>{const b=e.target.closest("[data-mode]");if
   document.querySelectorAll("[data-mode]").forEach(x=>x.classList.toggle("on",x.dataset.mode===S.input));
   const sw=document.getElementById("srWarn");if(sw)sw.hidden=!(S.input==="speak"&&!SR);
   if(A&&!A.done&&b.closest("#v-quiz"))renderQuizQ();});
-function setAuto(v){S.auto=v;save();$("#sndBtn").textContent=S.auto?"🔊":"🔈";document.querySelectorAll(".autoToggle").forEach(x=>x.checked=S.auto);}
-document.addEventListener("change",e=>{if(e.target.classList.contains("autoToggle")){setAuto(e.target.checked);if(S.auto&&A&&!A.done)say(A.q.q);}});
+function setAuto(v){S.auto=!!v;save();syncReadBtn();}
+document.addEventListener("change",e=>{if(e.target.classList.contains("autoToggle")){SPEAK_OK=true;setAuto(e.target.checked);if(S.auto)speakItems([{text:"Read aloud is on."}].concat(currentReadItems()));else stopSpeech();}});
 
 let A=null,rec=null;
 function stopListen(){if(rec){try{rec.abort();}catch(e){}rec=null;}}
@@ -943,7 +1025,7 @@ function wireType(q,box){const f=box.querySelector(".typeform"),inp=f.querySelec
   if(!matchMedia("(pointer:coarse)").matches)setTimeout(()=>inp.focus({preventScroll:true}),50);}
 function listen(q,box){const btn=box.querySelector("[data-mic]"),heard=box.querySelector(".heard");
   if(rec){stopListen();btn.classList.remove("live");return;}
-  if(canSpeak)speechSynthesis.cancel();
+  if(typeof stopSpeech==="function")stopSpeech();else if(canSpeak)try{speechSynthesis.cancel();}catch(e){}
   let finalTxt="",interim="",alts=[],err="";
   try{rec=new SR();}catch(e){heard.textContent="Voice input isn’t available here. Use “Type instead”.";return;}
   rec.lang="en-US";rec.interimResults=true;rec.maxAlternatives=4;rec.continuous=false;
@@ -978,7 +1060,9 @@ function showFb(box,q,ok,info){const title=info.timeout?"⏰ Time’s up!":info.
   if(wrongPart.length)h+=`<div class="note">“${esc(wrongPart.join(", "))}” isn’t an accepted answer to this question.</div>`;
   if(!info.self){h+=`<b>All accepted answers:</b>${q.vary&&mineVal(q.n)?`${savedLine(q,"Your saved answer")}`:""}${ansList(q,info.hi)}`;}
   if(!info.noTip)h+=tipHTML(q);
-  box.innerHTML=h+`</div>`;}
+  h+=readThisBtn('data-read-fb="'+q.n+'"','Read the answer');
+  box.innerHTML=h+`</div>`;
+  autoReadFeedback(q,ok,info);}
 
 // ---------- quiz & review ----------
 let Q={list:[],cur:null,right:0,wrong:0,run:0,review:false};
@@ -986,7 +1070,7 @@ $("#timerOn").onchange=e=>{S.timer=e.target.checked;save();$("#timerBar").hidden
 $("#timerSec").onchange=e=>{S.timerSec=+e.target.value;save();};
 function startQuiz(review){Q={list:review?misses():pool(),cur:null,right:0,wrong:0,run:0,review};recent=[];$("#timerOn").checked=S.timer;$("#timerSec").value=String(S.timerSec);$("#timerBar").hidden=!S.timer;$("#qModes").innerHTML=modeChips();$("#srWarn").hidden=!(S.input==="speak"&&!SR);setAuto(S.auto);nextQuiz();}
 function updQuizScore(){$("#qRight").textContent=Q.right;$("#qWrong").textContent=Q.wrong;$("#qStreak").textContent=Q.run;}
-function nextQuiz(){stopTimer();stopListen();updQuizScore();
+function nextQuiz(){stopTimer();stopListen();if(typeof stopSpeech==="function")stopSpeech();updQuizScore();
   if(Q.review){Q.list=Q.list.filter(q=>S.p[q.n]&&S.p[q.n].miss);
     if(!Q.list.length){A=null;$("#qMeta").textContent="Review my misses";$("#qArea").innerHTML=`<div class="qcard empty"><div class="big">🎉</div><h3>No misses to review!</h3><p>Questions you get wrong or mark “Still learning” show up here. Answer one correctly twice in a row to clear it.</p><button class="btn" data-go="quiz">Go to quiz</button></div>`;$("#timerBar").hidden=true;if(Q.right)confetti();return;}}
   if(Q.seq){if(Q.si>=Q.list.length){A=null;$("#qMeta").textContent=Q.label||"Review";$("#qArea").innerHTML=`<div class="qcard empty"><div class="big">🌿</div><h3>Nice and easy does it</h3><p>You worked through ${Q.list.length} question${Q.list.length===1?"":"s"}. Come back whenever you want another calm pass.</p><div class="row"><button class="btn" data-final>Review again</button><button class="btn ghost" data-go="home">Home</button></div></div>`;$("#timerBar").hidden=true;return;}
@@ -1010,7 +1094,7 @@ function mockIntro(){A=null;$("#mMeta").textContent="Mock interview";const last=
   $("#mockArea").innerHTML=`<div class="qcard"><div class="big">🎤</div><h2 style="text-align:center;margin-top:0">Practice the real interview</h2>
   <b>How do you want to answer?</b><div class="chips" style="margin:8px 0">${modeChips()}</div>
   <div class="warn" id="srWarn" ${S.input==="speak"&&!SR?"":"hidden"}>🎙️ Voice answers aren’t supported in this browser, so you’ll get a text box instead.</div>
-  <label class="switch"><input type="checkbox" class="autoToggle" ${S.auto?"checked":""}> 🔊 Officer reads each question aloud</label>
+  <label class="switch"><input type="checkbox" class="autoToggle" ${S.auto?"checked":""}> 🔊 Read aloud automatically</label>
   <div class="panel soft"><b>Standard test (2025 version)</b><ul class="small" style="padding-left:20px;margin:6px 0">
   <li>Up to <b>20</b> random questions from all 128.</li><li>Pass with <b>12</b> correct. The interview stops as soon as you reach 12 correct, or once you have 9 wrong and can’t reach 12 anymore.</li></ul>
   <button class="btn" id="mStd" style="width:100%">Start the 20-question test</button></div>
@@ -1022,7 +1106,7 @@ function startMock(senior){const src=senior?DATA.filter(q=>q.star):DATA;const ma
   M={qs:shuffle(src).slice(0,max),i:0,right:0,wrong:0,max,passAt,failAt:max-passAt+1,senior,res:[]};nextMock();}
 function mockDots(){return `<div class="mockdots">${M.qs.map((q,i)=>`<i class="${M.res[i]===true?"ok":M.res[i]===false?"no":i===M.i?"cur":""}"></i>`).join("")}</div>`;}
 function mockOver(){return M.right>=M.passAt||M.wrong>=M.failAt||M.i>=M.qs.length;}
-function nextMock(){stopListen();if(mockOver())return endMock();
+function nextMock(){stopListen();if(typeof stopSpeech==="function")stopSpeech();if(mockOver())return endMock();
   const q=M.qs[M.i];$("#mMeta").textContent=`Question ${M.i+1} of up to ${M.max} · ✅ ${M.right} ❌ ${M.wrong}`;
   $("#mockArea").innerHTML=`${mockDots()}<div class="qcard">${speakBtn(q)}<div class="qnum">Officer asks:</div><div class="qtext">${esc(q.q)}</div><div class="ansui"></div><div class="fbx"></div></div>`;
   const label=()=>(M.right>=M.passAt||M.wrong>=M.failAt||M.i+1>=M.qs.length)?"See my result 🏁":"Next question →";
@@ -1046,13 +1130,12 @@ function endMock(){A=null;const pass=M.right>=M.passAt;const asked=M.res.length;
 // ---------- study list ----------
 function renderList(){const L=pool();$("#lMeta").textContent=`${filterLabel()} · ${L.length} questions`;let cat="";
   $("#listArea").innerHTML=L.map(q=>{const p=S.p[q.n];const col=!p||!p.seen?"#dee2e6":p.miss?"#ff8787":p.box>=MASTER_BOX?"#51cf66":"#ffd43b";const h=q.category!==cat?`<h2>${esc(q.section)} · ${esc(CAT_SHORT[q.category]||q.category)}</h2>`:"";cat=q.category;
-    return `${h}<details data-n="${q.n}"><summary><span class="lvl" style="background:${col}"></span>${q.n}. ${esc(q.q)} ${q.star?"<span class='pill star'>★</span>":""}${q.vary?"<span class='pill vary'>varies</span>":""}${p&&p.seen?"":"<span class='pill new'>🆕 not seen yet</span>"}</summary><div class="ans">${q.vary&&mineVal(q.n)?`${savedLine(q,"Your answer")}`:""}${ansList(q)}</div>${mineBox(q)}${pickTipHTML(q)}${q.tip?`<button class="link tipbtn" aria-expanded="false" onclick="const t=this.nextElementSibling;t.hidden=!t.hidden;this.setAttribute('aria-expanded',!t.hidden)">💡 Tip</button><div class="tip" hidden>${esc(q.tip)}</div>`:""}${canSpeak||AUDIO_BASE?`<div class="row" style="margin-top:8px"><button class="btn ghost" data-playfrom="${q.n}">▶ Play from here</button><button class="btn ghost" onclick="readOne(${q.n})">🔊 Read this one</button></div>`:""}</details>`;}).join("");
+    return `${h}<details data-n="${q.n}"><summary><span class="lvl" style="background:${col}"></span>${q.n}. ${esc(q.q)} ${q.star?"<span class='pill star'>★</span>":""}${q.vary?"<span class='pill vary'>varies</span>":""}${p&&p.seen?"":"<span class='pill new'>🆕 not seen yet</span>"}</summary><div class="ans">${q.vary&&mineVal(q.n)?`${savedLine(q,"Your answer")}`:""}${ansList(q)}</div>${mineBox(q)}${pickTipHTML(q)}${q.tip?`<button class="link tipbtn" aria-expanded="false" onclick="const t=this.nextElementSibling;t.hidden=!t.hidden;this.setAttribute('aria-expanded',!t.hidden)">💡 Tip</button><div class="tip" hidden>${esc(q.tip)}</div>`:""}${canSpeak||AUDIO_BASE?`<div class="row" style="margin-top:8px">${readThisBtn('data-read-q="'+q.n+'"','Read this question')} <button class="btn ghost" data-playfrom="${q.n}">▶ Play from here (lock-screen audio)</button></div>`:""}</details>`;}).join("");
   $("#plHost").innerHTML=AUDIO_BASE?`<details class="plfb" id="plFb"${AU.failed?" open":""}><summary>🗣 Or read with this device’s voice instead (no download; stops when the screen locks)</summary>${plBar()}</details>`:plBar();plWire();auWire();auInit();
   $("#heroPlay").onclick=mainToggle;$("#heroRestart").onclick=mainRestart;plStop();plBuild();plUI();const pq=PL.list[PL.idx];if(pq&&plOpts().pos){$("#plStatus").textContent=`Resume from Question ${pq.n} (${PL.idx+1}/${PL.list.length}) — press ▶`;}}
 // ---------- Study list: continuous "Play all" read-aloud ----------
 const PL={list:[],idx:0,playing:false,paused:false,token:0,gapT:0,keep:0,dog:0,cur:null};
 function plOpts(){S.play=Object.assign({pos:0,rate:1,answers:true,gap:2,mode:"all",loop:true,picksOnly:true},S.play||{});if(S.play.picksOnly==null)S.play.picksOnly=true;return S.play;}
-const isIOS=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
 function speakClean(t){return String(t).replace(/\s*\[[^\]]*\]/g,"").replace(/[“”]/g,"").replace(/\bU\.S\.(?=\W|$)/g,"U.S.").trim();}
 function plJoinAnd(a){return a.length>1?a.slice(0,-1).join(", ")+", and "+a[a.length-1]:(a[0]||"");}
 function plAnswers(q){const o=plOpts();const displayed=q.vary?(mineVal(q.n)?acceptable(q):q.a.map(display)):q.a.map(display);
@@ -1072,7 +1155,7 @@ function plMedia(q){try{if(!("mediaSession" in navigator)||!q)return;if(window.M
   navigator.mediaSession.playbackState=PL.playing&&!PL.paused?"playing":"paused";}catch(e){}}
 function plSpeak(text,done){const tok=PL.token;let fired=false;const fin=()=>{if(fired||tok!==PL.token)return;fired=true;PL.cur=null;done();};
   let u;try{u=new SpeechSynthesisUtterance(text);}catch(e){plStop("Read-aloud isn’t available here.");return;}
-  u.lang="en-US";pickVoice();if(SPV)u.voice=SPV;u.rate=plOpts().rate;u.onend=fin;u.onerror=ev=>{if(ev&&(ev.error==="interrupted"||ev.error==="canceled"))return;fin();};
+  u.lang="en-US";pickVoice();try{if(SPV)u.voice=SPV;}catch(e){}u.rate=plOpts().rate;u.onend=fin;u.onerror=ev=>{if(ev&&(ev.error==="interrupted"||ev.error==="canceled"))return;fin();};
   PL.cur={fin,start:Date.now(),len:text.length};
   try{speechSynthesis.speak(u);}catch(e){fin();}}
 function plItem(){if(!PL.playing||PL.paused)return;const q=PL.list[PL.idx];if(!q){plStop();return;}
@@ -1089,7 +1172,7 @@ function plTimers(on){clearInterval(PL.keep);clearInterval(PL.dog);if(!on)return
   PL.keep=setInterval(()=>{if(!PL.playing||PL.paused||!canSpeak)return;try{if(speechSynthesis.paused)speechSynthesis.resume();else if(!isIOS&&speechSynthesis.speaking){speechSynthesis.pause();speechSynthesis.resume();}}catch(e){}},10000);
   PL.dog=setInterval(()=>{if(!PL.playing||PL.paused||!PL.cur)return;const c=PL.cur;const limit=4000+c.len*120/plOpts().rate;
     if(!speechSynthesis.speaking&&!speechSynthesis.pending&&Date.now()-c.start>1500)c.fin();else if(Date.now()-c.start>limit)c.fin();},1000);}
-function plPlayFrom(idx){if(!canSpeak){plUI();return;}{const a=document.getElementById("aud");if(a&&!a.paused)a.pause();}if(!PL.list.length)plBuild();if(!PL.list.length)return;
+function plPlayFrom(idx){if(!canSpeak){plUI();return;}if(typeof stopSpeech==="function")stopSpeech();{const a=document.getElementById("aud");if(a&&!a.paused)a.pause();}if(!PL.list.length)plBuild();if(!PL.list.length)return;
   PL.token++;clearTimeout(PL.gapT);try{speechSynthesis.cancel();}catch(e){}plHandlers();
   if(typeof idx==="number")PL.idx=Math.max(0,Math.min(idx,PL.list.length-1));PL.playing=true;PL.paused=false;plTimers(true);plItem();}
 function plToggle(){if(!canSpeak)return;if(!PL.playing)return plPlayFrom();if(PL.paused){PL.paused=false;plPlayFrom(PL.idx);}else{PL.paused=true;PL.token++;clearTimeout(PL.gapT);try{speechSynthesis.cancel();}catch(e){}plUI();plMedia(PL.list[PL.idx]);}}
@@ -1239,17 +1322,17 @@ function auWire(){const a=aud();if(!a||a._wired)return;a._wired=true;
   $("#aDl").onclick=auDownload;$("#aDel").onclick=auRemove;
   $("#aRates").onclick=e=>{const b=e.target.closest("[data-arate]");if(!b)return;auOpts().rate=+b.dataset.arate;save();a.playbackRate=auOpts().rate;document.querySelectorAll("[data-arate]").forEach(x=>x.classList.toggle("on",x===b));auPos();};}
 
-function renderMine(){$("#mineArea").innerHTML=Object.keys(VARY).map(n=>{const q=BYN[n];return `<div class="panel"><div class="qnum">Question ${n}</div><b>${esc(q.q)}</b><div class="note">USCIS: ${esc(q.a.join(" "))}</div>${mineBox(q)}</div>`;}).join("");}
+function renderMine(){$("#mineArea").innerHTML=Object.keys(VARY).map(n=>{const q=BYN[n];return `<div class="panel">${readThisBtn('data-read-q="'+n+'"','Read this question')}<div class="qnum">Question ${n}</div><b>${esc(q.q)}</b><div class="note">USCIS: ${esc(q.a.join(" "))}</div>${mineBox(q)}</div>`;}).join("");}
 
 // ================= Interview practice: speaking + weak-spot report (extension) =================
 const CLIP_BASE=AUDIO_BASE?AUDIO_BASE+"clips/":null;
 let clipA=null,clipTok=0;
 // Play a pre-recorded clip (same Jenny voice as the MP3s); fall back to the device voice if it can't play.
-function playClip(id,text,done){const tok=++clipTok;try{if(clipA)clipA.pause();}catch(e){}if(canSpeak)try{speechSynthesis.cancel();}catch(e){}
+function playClip(id,text,done){if(typeof SAYT==="number")SAYT++;const tok=++clipTok;try{if(clipA)clipA.pause();}catch(e){}if(canSpeak)try{speechSynthesis.cancel();}catch(e){}
   const main=document.getElementById("aud");if(main&&!main.paused)main.pause();if(PL.playing)plStop();
   let ended=false;const fin=()=>{if(ended||tok!==clipTok)return;ended=true;done&&done();};let fell=false;
   const fallback=()=>{if(fell||tok!==clipTok)return;fell=true;if(!canSpeak||!text){fin();return;}
-    try{const u=new SpeechSynthesisUtterance(text);u.lang="en-US";pickVoice();if(SPV)u.voice=SPV;u.rate=.95;u.onend=fin;u.onerror=fin;speechSynthesis.speak(u);}catch(e){fin();}};
+    try{const u=new SpeechSynthesisUtterance(text);u.lang="en-US";pickVoice();try{if(SPV)u.voice=SPV;}catch(e2){}u.rate=.95;u.onend=fin;u.onerror=fin;speechSynthesis.speak(u);}catch(e){fin();}};
   if(!CLIP_BASE||!id)return fallback();
   if(!clipA){clipA=new Audio();clipA.preload="auto";clipA.setAttribute("playsinline","");}
   clipA.onended=fin;clipA.onerror=fallback;clipA.src=CLIP_BASE+id+".mp3";
@@ -1275,7 +1358,7 @@ function speakIntro(){A=null;SP=null;stopClip();const o=S.spk=Object.assign({rea
   $("#spReal").onchange=e=>{o.real=e.target.checked;save();};$("#spText").onchange=e=>{o.showText=e.target.checked;save();};if($("#spAuto"))$("#spAuto").onchange=e=>{o.autoListen=e.target.checked;save();};
   $("#spGo").onclick=()=>{const real=o.real;SP={real,qs:real?shuffle(DATA).slice(0,20):[],i:0,right:0,wrong:0,max:real?20:Infinity,passAt:12,failAt:9,res:[]};recent=[];speakNext();};}
 function speakOver(){return SP.real&&(SP.right>=SP.passAt||SP.wrong>=SP.failAt||SP.i>=SP.qs.length);}
-function speakNext(){stopListen();if(speakOver())return speakEnd();const q=SP.real?SP.qs[SP.i]:mark(nextQ(pool()));SP.cur=q;const o=S.spk;
+function speakNext(){stopListen();if(typeof stopSpeech==="function")stopSpeech();if(speakOver())return speakEnd();const q=SP.real?SP.qs[SP.i]:mark(nextQ(pool()));SP.cur=q;const o=S.spk;
   $("#spMeta").textContent=SP.real?`Question ${SP.i+1} of up to 20 · ✅ ${SP.right} ❌ ${SP.wrong}`:`Practice · ✅ ${SP.right} ❌ ${SP.wrong}`;
   $("#spArea").innerHTML=`<div class="qcard"><div class="officer"><span class="big">👮</span><div style="flex:1"><div class="qnum">The officer asks${o.showText?"":" (listen)"}:</div><div class="qtext" id="spQ" ${o.showText?"":"hidden"}>${esc(q.q)}</div></div></div>
    <div class="row" style="margin-top:8px"><button class="replay" id="spRe">🔊 Repeat the question</button><button class="link" id="spShow">${o.showText?"Hide":"Show"} text</button></div>
@@ -1318,7 +1401,7 @@ function coverageHTML(cs){const nx=nextTopic(cs);const pct=x=>Math.round(x*100)+
    <div class="tm">${c.acc==null?"No answers yet":`Accuracy <b>${pct(c.acc)}</b>`} · Tried <b>${c.seen}/${c.qs.length}</b> · ${c.att} attempt${c.att===1?"":"s"} · Last practiced: ${ago(c.last)}</div>
    <div class="bt" title="Accuracy"><div class="bf" style="width:${c.acc==null?0:Math.max(4,c.acc*100)}%;background:${c.acc==null?"#ced4da":c.acc>=STRONG_ACC?"#40c057":c.acc>=LOW_ACC?"#fab005":"#fa5252"}"></div></div>
    <div class="bt cov" title="Coverage"><div class="bf" style="width:${c.cov*100}%"></div></div>
-   <div class="trow">${c.unseen.length?`<details class="unseen"><summary>🆕 ${c.unseen.length} never seen</summary><ul>${c.unseen.map(q=>`<li><span class="pill new">🆕 never seen</span> ${q.n}. ${esc(q.q)}</li>`).join("")}</ul></details>`:`<span class="small">✓ Every question seen</span>`}<button class="link" data-topic="${c.i}">Practice</button></div></div>`).join("")}</div>
+   <div class="trow">${c.unseen.length?`<details class="unseen"><summary>🆕 ${c.unseen.length} never seen</summary><ul>${c.unseen.map(q=>`<li>${typeof readThisBtn==="function"?readThisBtn('data-read-q="'+q.n+'"'):""}<span class="pill new">🆕 never seen</span> ${q.n}. ${esc(q.q)}</li>`).join("")}</ul></details>`:`<span class="small">✓ Every question seen</span>`}<button class="link" data-topic="${c.i}">Practice</button></div></div>`).join("")}</div>
   <p class="small legend"><b>How status works:</b> <span class="badge st">Strong</span> 85%+ correct and at least 70% of the topic’s questions tried · <span class="badge nw">Needs work</span> under 85% correct with 70%+ tried, or under 60% after 5+ answers · <span class="badge ne">Not practiced enough</span> under 70% of questions tried · <span class="badge ns">Not started</span> no answers yet. Bars: accuracy (top), questions tried (bottom).</p></div>`;}
 // ---- Daily goal ----
 const GOALS=[5,10,20,30];
@@ -1400,11 +1483,11 @@ function renderReport(){const cs=catStats();let R=0,W=0;cs.forEach(c=>{R+=c.r;W+
   const missed=DATA.filter(q=>S.p[q.n]&&S.p[q.n].wrong).sort((a,b)=>S.p[b.n].wrong-S.p[a.n].wrong||(S.p[a.n].right/(S.p[a.n].seen||1))-(S.p[b.n].right/(S.p[b.n].seen||1))).slice(0,10);
   const rec=recommend();const spk=S.speakRes||[];const sp=spk.slice(-1)[0];const spReal=spk.filter(r=>r.pass!=null);
   $("#repArea").innerHTML=`<div class="panel"><div class="tiles"><div class="tile"><b>${R+W}</b>civics answers</div><div class="tile"><b>${R+W?Math.round(100*R/(R+W))+"%":"–"}</b>accuracy</div><div class="tile"><b>${m}/128</b>mastered</div><div class="tile"><b>${mocks?(mocks.pass?"✅ ":"❌ ")+mocks.right+"/"+mocks.asked:"–"}</b>last mock interview</div></div></div>
-  <div class="panel"><h3 style="margin-top:0">🎯 Recommended next</h3>${rec.length?`<p class="small">${rec.length} questions picked from your misses, low-accuracy questions, and your weakest topic. Star an answer to use it everywhere.</p><ol class="small recqs" style="padding-left:22px">${rec.map(n=>`<li><div>${n}. ${esc(BYN[n].q)}${typeof pickLine==="function"?pickLine(BYN[n]):""}</div>${typeof ansList==="function"?ansList(BYN[n]):""}</li>`).join("")}</ol><button class="btn g" id="repGo" style="width:100%">▶ Practice these</button>`:"<p class=small>Nothing to recommend yet.</p>"}
+  <div class="panel"><h3 style="margin-top:0">🎯 Recommended next</h3>${rec.length?`<p class="small">${rec.length} questions picked from your misses, low-accuracy questions, and your weakest topic. Star an answer to use it everywhere.</p><ol class="small recqs" style="padding-left:22px">${rec.map(n=>`<li>${typeof readThisBtn==="function"?readThisBtn('data-read-q="'+n+'"'):""}<div>${n}. ${esc(BYN[n].q)}${typeof pickLine==="function"?pickLine(BYN[n]):""}</div>${typeof ansList==="function"?ansList(BYN[n]):""}</li>`).join("")}</ol><button class="btn g" id="repGo" style="width:100%">▶ Practice these</button>`:"<p class=small>Nothing to recommend yet.</p>"}
 </div>
   ${coverageHTML(cs)}
   <div class="panel"><h3 style="margin-top:0">📈 Last 30 days</h3>${chartSVG()}</div>
-  <div class="panel"><h3 style="margin-top:0">❗ Most missed</h3>${missed.length?missed.map(q=>`<div class="mm"><span class="c">✗${S.p[q.n].wrong} ✓${S.p[q.n].right}</span><div><div>${q.n}. ${esc(q.q)}${typeof pickLine==="function"?pickLine(q):""}</div>${typeof ansList==="function"?ansList(q):""}</div></div>`).join(""):"<p class=small>No misses yet.</p>"}</div>
+  <div class="panel"><h3 style="margin-top:0">❗ Most missed</h3>${missed.length?missed.map(q=>`<div class="mm">${typeof readThisBtn==="function"?readThisBtn('data-read-q="'+q.n+'"'):""}<span class="c">✗${S.p[q.n].wrong} ✓${S.p[q.n].right}</span><div><div>${q.n}. ${esc(q.q)}${typeof pickLine==="function"?pickLine(q):""}</div>${typeof ansList==="function"?ansList(q):""}</div></div>`).join(""):"<p class=small>No misses yet.</p>"}</div>
   <div class="panel"><h3 style="margin-top:0">🗣️ Speaking practice</h3>
    <p class="small">${sp?`Last session: ${sp.right}/${sp.asked} correct${sp.pass==null?" (practice)":sp.pass?" ✅ passed":" ❌ not yet"}. Real-test sessions: ${spReal.filter(r=>r.pass).length}/${spReal.length} passed.`:"No speaking sessions yet."}</p>${spk.length?`<p class="small">Recent: ${spk.slice(-5).reverse().map(r=>`${r.pass==null?"🗣️":r.pass?"✅":"❌"} ${r.right}/${r.asked}`).join(" · ")}</p>`:""}<button class="btn ghost" data-go="speak" style="width:100%">🗣️ Speaking practice</button></div>`;
   if($("#repGo"))$("#repGo").onclick=()=>startCustom(rec,"🎯 Recommended set");}
@@ -1416,7 +1499,7 @@ function renderGroups(){
     <button class="btn ghost" data-reset-picks style="width:100%">↺ Reset to suggested picks</button></div>
     ${list.map(g=>{const qs=g.qs.map(n=>BYN[n]).filter(Boolean);
       return `<details class="gcard" data-gid="${esc(g.id)}"><summary><b>${esc(g.answer)}</b> <span class="pill">${qs.length} question${qs.length===1?"":"s"}</span>${g.detail&&g.detail!==g.answer?`<div class="small">${esc(g.detail)}</div>`:""}</summary>
-        <ol class="gqs">${qs.map(q=>`<li><b>Q${q.n}.</b> ${esc(q.q)}${typeof pickLine==="function"?pickLine(q):""}${typeof ansList==="function"?ansList(q):""}</li>`).join("")}</ol>
+        <ol class="gqs">${qs.map(q=>`<li>${typeof readThisBtn==="function"?readThisBtn('data-read-q="'+q.n+'"'):""}<b>Q${q.n}.</b> ${esc(q.q)}${typeof pickLine==="function"?pickLine(q):""}${typeof ansList==="function"?ansList(q):""}</li>`).join("")}</ol>
         <button class="btn g" data-practice-group="${esc(g.id)}" style="width:100%;margin-top:8px">▶ Practice this group</button></details>`;}).join("")}`;}
 document.addEventListener("click",e=>{const b=e.target.closest("[data-practice-group]");if(!b)return;const g=(GROUPS||[]).find(x=>x.id===b.dataset.practiceGroup);if(g)startCustom(g.qs,"🔗 "+g.answer,{seq:true});});
 
@@ -1493,7 +1576,7 @@ function renderCoupleCats(){const cats=coupleCats();
     <p class="small" style="margin:8px 0 0">This is not an official USCIS list. Answer with what you actually remember.</p></div>
     ${cats.map(c=>`<details class="ccat" data-cid="${esc(c.id)}"><summary>${c.emoji||""} ${esc(c.title)} <span class="pill">${c.questions.length}</span></summary>
       <p class="small">${esc(c.blurb||"")}</p>
-      <ol>${c.questions.map(q=>`<li class="cqitem"><b>${esc(q.q)}</b>${oftenPill(q)}${q.hint?`<div class="small">${esc(q.hint)}</div>`:""}${coupleAnsBox(q)}</li>`).join("")}</ol>
+      <ol>${c.questions.map(q=>`<li class="cqitem">${typeof readThisBtn==="function"?readThisBtn('data-read-couple="'+q.id+'"'):""}<b>${esc(q.q)}</b>${oftenPill(q)}${q.hint?`<div class="small">${esc(q.hint)}</div>`:""}${coupleAnsBox(q)}</li>`).join("")}</ol>
       <button class="btn g" data-couple-drill="${esc(c.id)}" style="width:100%">▶ Quiz this topic</button></details>`).join("")}`;}
 let CQ=null;
 function startCoupleQuiz(catId){const all=coupleAllQ();const list=catId?all.filter(q=>q.cat===catId):shuffle(all.slice());
@@ -1514,7 +1597,9 @@ function renderCoupleQuiz(){const el=$("#cquizArea");if(!el)return;
   const q=CQ.list[CQ.i], marked=!!(S.coupleReview&&S.coupleReview.includes(q.id));
   const saved=coupleAns(q.id);
   $("#cqMeta").textContent=`${CQ.i+1} / ${CQ.list.length}${q.catTitle?" · "+q.catTitle:""}`;
+  if(typeof stopSpeech==="function")stopSpeech();
   el.innerHTML=`<div class="cqcard">
+    ${typeof readThisBtn==="function"?readThisBtn('data-read-couple="'+q.id+'"'):""}
     <div class="cqask">Person ${CQ.asker} asks · Person ${CQ.asker===1?2:1} answers</div>
     <div class="qtext" style="margin:10px 0 8px">${esc(q.q)}</div>${oftenPill(q)}
     <button class="link" id="cqHintBtn" aria-expanded="false">Show a hint</button>
@@ -1529,25 +1614,27 @@ function renderCoupleQuiz(){const el=$("#cquizArea");if(!el)return;
       <button class="btn ghost" id="cqMark">${marked?"✓ Marked to review":"☆ Mark to review"}</button>
       <button class="btn ghost" id="cqSwitch">Switch who asks</button>
     </div></div>`;
-  if($("#cqHintBtn"))$("#cqHintBtn").onclick=()=>{const h=$("#cqHint");h.hidden=!h.hidden;$("#cqHintBtn").textContent=h.hidden?"Show a hint":"Hide hint";$("#cqHintBtn").setAttribute("aria-expanded",String(!h.hidden));};
-  if($("#cqSavedBtn"))$("#cqSavedBtn").onclick=()=>{const h=$("#cqSaved");h.hidden=!h.hidden;$("#cqSavedBtn").textContent=h.hidden?"Show our saved answer":"Hide our saved answer";$("#cqSavedBtn").setAttribute("aria-expanded",String(!h.hidden));};
+  if($("#cqHintBtn"))$("#cqHintBtn").onclick=()=>{const h=$("#cqHint");h.hidden=!h.hidden;$("#cqHintBtn").textContent=h.hidden?"Show a hint":"Hide hint";$("#cqHintBtn").setAttribute("aria-expanded",String(!h.hidden));if(!h.hidden&&typeof canAutoRead==="function"&&canAutoRead())speakItems([{text:"Hint: "+(q.hint||"")}]);};
+  if($("#cqSavedBtn"))$("#cqSavedBtn").onclick=()=>{const h=$("#cqSaved");h.hidden=!h.hidden;$("#cqSavedBtn").textContent=h.hidden?"Show our saved answer":"Hide our saved answer";$("#cqSavedBtn").setAttribute("aria-expanded",String(!h.hidden));if(!h.hidden&&typeof canAutoRead==="function"&&canAutoRead())speakItems([{text:"Our saved answer: "+saved}]);};
   if($("#cqNext"))$("#cqNext").onclick=()=>{CQ.i++;renderCoupleQuiz();};
   if($("#cqPrev"))$("#cqPrev").onclick=()=>{CQ.i=Math.max(0,CQ.i-1);renderCoupleQuiz();};
   if($("#cqSwitch"))$("#cqSwitch").onclick=()=>{CQ.asker=CQ.asker===1?2:1;renderCoupleQuiz();};
   if($("#cqMark"))$("#cqMark").onclick=()=>{S.coupleReview=S.coupleReview||[];const i=S.coupleReview.indexOf(q.id);if(i>=0)S.coupleReview.splice(i,1);else S.coupleReview.push(q.id);save();renderCoupleQuiz();};
-  if(S.auto)say(q.q);}
+  if(typeof canAutoRead==="function"?canAutoRead():S.auto)speakItems([{text:q.q}]);}
 function renderCoupleDocs(){const docs=coupleDocs();S.coupleDocs=S.coupleDocs||{};
   const groups=[...new Set(docs.map(d=>d.group))];
   const done=docs.filter(d=>S.coupleDocs[d.id]).length;
   $("#cdocsArea").innerHTML=`<div class="panel"><p style="margin:0">${done} of ${docs.length} checked. Bring what your appointment notice lists. Originals for IDs and certificates; copies are fine for statements and photos.</p></div>
     ${groups.map(g=>`<div class="panel"><h3 style="margin-top:0">${esc(g)}</h3>
-      ${docs.filter(d=>d.group===g).map(d=>`<div class="docrow"><input type="checkbox" id="doc-${d.id}" data-couple-doc="${esc(d.id)}" ${S.coupleDocs[d.id]?"checked":""}>
+      ${docs.filter(d=>d.group===g).map(d=>`<div class="docrow">${typeof readThisBtn==="function"?readThisBtn('data-read-doc="'+d.id+'"'):""}<input type="checkbox" id="doc-${d.id}" data-couple-doc="${esc(d.id)}" ${S.coupleDocs[d.id]?"checked":""}>
         <label for="doc-${d.id}"><b>${esc(d.item)}</b><div class="small">${esc(d.note||"")}</div></label></div>`).join("")}</div>`).join("")}`;}
-function renderCoupleTips(){$("#ctipsArea").innerHTML=coupleTips().map(t=>`<div class="panel"><b>${esc(t.title)}</b><p class="small" style="margin:8px 0 0">${esc(t.body)}</p></div>`).join("");}
+function renderCoupleTips(){$("#ctipsArea").innerHTML=coupleTips().map((t,i)=>`<div class="panel tip-card">${typeof readThisBtn==="function"?readThisBtn('data-read-tip="'+i+'"'):""}<b>${esc(t.title)}</b><p class="small" style="margin:8px 0 0">${esc(t.body)}</p></div>`).join("");
+  if(typeof canAutoRead==="function"&&canAutoRead()&&coupleTips()[0]){const t=coupleTips()[0];speakItems([{text:"Tips. "+t.title+". "+t.body}]);}}
 function renderCoupleChanges(){const notes=coupleNotes();
   $("#cchgArea").innerHTML=`<div class="panel"><p style="margin:0">Dated notes from official USCIS pages and related public sources about changes that can affect a naturalization or combo interview. Each note has a source link. This is not legal advice.</p></div>
-    ${notes.map(n=>`<div class="panel note-card"><b>${esc(n.title)}</b><div class="small notedate">${esc(n.date||"")}</div><p class="small" style="margin:8px 0">${esc(n.body)}</p>
-      <div class="small">Source${(n.sources||[]).length>1?"s":""}: ${linkList(n.sources)}</div></div>`).join("")}`;}
+    ${notes.map(n=>`<div class="panel note-card">${typeof readThisBtn==="function"?readThisBtn('data-read-note="'+n.id+'"'):""}<b>${esc(n.title)}</b><div class="small notedate">${esc(n.date||"")}</div><p class="small" style="margin:8px 0">${esc(n.body)}</p>
+      <div class="small">Source${(n.sources||[]).length>1?"s":""}: ${linkList(n.sources)}</div></div>`).join("")}`;
+  if(typeof canAutoRead==="function"&&canAutoRead()&&notes[0])speakItems([{text:"What's changed. "+notes[0].title+". "+notes[0].body}]);}
 function renderCoupleNotice(){const info=coupleNotice();const items=info.items||[];S.notice=S.notice||{};
   const groups=[...new Set(items.map(d=>d.group))];
   const done=items.filter(d=>S.notice[d.id]).length;
@@ -1556,7 +1643,7 @@ function renderCoupleNotice(){const info=coupleNotice();const items=info.items||
     <p class="small">${esc(info.note||"")}</p>
     <button class="btn ghost" id="noticeReset" style="margin-top:8px">Reset checklist</button></div>
     ${groups.map(g=>`<div class="panel"><h3 style="margin-top:0">${esc(g)}</h3>
-      ${items.filter(d=>d.group===g).map(d=>`<div class="docrow"><input type="checkbox" id="notice-${d.id}" data-notice-item="${esc(d.id)}" ${S.notice[d.id]?"checked":""}>
+      ${items.filter(d=>d.group===g).map(d=>`<div class="docrow">${typeof readThisBtn==="function"?readThisBtn('data-read-notice="'+d.id+'"'):""}<input type="checkbox" id="notice-${d.id}" data-notice-item="${esc(d.id)}" ${S.notice[d.id]?"checked":""}>
         <label for="notice-${d.id}"><b>${esc(d.item)}</b>${d.note?`<div class="small">${esc(d.note)}</div>`:""}</label></div>`).join("")}</div>`).join("")}`;
   if($("#noticeReset"))$("#noticeReset").onclick=()=>{if(confirm("Clear all checks on the interview notice checklist?")){S.notice={};save();renderCoupleNotice();}};}
 function renderCoupleSources(){const groups=coupleSources();
@@ -1715,13 +1802,13 @@ const EXTGO={speak:speakIntro,report:renderReport,groups:renderGroups,choose:ren
 
 // ---------- keyboard ----------
 document.addEventListener("keydown",e=>{if(e.target.matches("input,textarea,select"))return;const on=document.querySelector(".view.on").id;
-  if(on==="v-flash"){if(e.key===" "){e.preventDefault();$("#fc").classList.toggle("flipped");}if(e.key==="ArrowRight")flashAnswer(true);if(e.key==="ArrowLeft")flashAnswer(false);}
+  if(on==="v-flash"){if(e.key===" "){e.preventDefault();flipFlash();}if(e.key==="ArrowRight")flashAnswer(true);if(e.key==="ArrowLeft")flashAnswer(false);}
   if((on==="v-quiz"||on==="v-mock")&&A&&!A.done&&A.opts){const k="1234abcd".indexOf(e.key.toLowerCase());if(k>=0)chooseOpt(k%4);}});
 
 // ---------- init ----------
-load();if(typeof applyTheme==="function")applyTheme();if(canSpeak)$("#sndBtn").textContent=S.auto?"🔊":"🔈";else $("#sndBtn").style.display="none";
+load();if(typeof applyTheme==="function")applyTheme();if(canSpeak)syncReadBtn();else if($("#sndBtn"))$("#sndBtn").style.display="none";
 refreshStats();chips();updateHome();
-window.__civics={count:DATA.length,DATA,S:()=>S,SUGGESTED,GROUPS,COUPLE,myPicks,suggestedPicks,togglePick,picksAreSuggested,openSection,
+window.__civics={count:DATA.length,DATA,S:()=>S,SUGGESTED,GROUPS,COUPLE,myPicks,suggestedPicks,togglePick,picksAreSuggested,openSection,setAuto,stopSpeech,speakItems,readCivics,autoReadQuestion,autoReadFlashBack,autoReadFeedback,pickSpeech,answersSpeech,
   coupleAns:typeof coupleAns==="function"?coupleAns:undefined,coupleGet:typeof coupleGet==="function"?coupleGet:undefined,coupleNote:typeof coupleNote==="function"?coupleNote:undefined,
   syncBuild:typeof syncBuild==="function"?syncBuild:undefined,syncEncode:typeof syncEncode==="function"?syncEncode:undefined,syncDecode:typeof syncDecode==="function"?syncDecode:undefined,
   syncMerge:typeof syncMerge==="function"?syncMerge:undefined,syncPreview:typeof syncPreview==="function"?syncPreview:undefined};
