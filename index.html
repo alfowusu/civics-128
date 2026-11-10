@@ -314,7 +314,7 @@ html[data-theme=dark] .pill.pickpill{background:#4a3a00;color:#ffe066}
 .mh-tile.t1{background:linear-gradient(135deg,#364fc7,#5f3dc4)}
 .mh-tile.t2{background:linear-gradient(135deg,#a61e4d,#c2255c)}
 .mh-tile.t3{background:linear-gradient(135deg,#0a4d5c,#0b6274)}
-.mh-tile.t4{background:linear-gradient(135deg,#9c3d00,#b35c00)}
+.mh-tile.t4{background:linear-gradient(135deg,#7a2e00,#8a3800)}
 .ccat{background:var(--card);border-radius:14px;margin:8px 0;padding:14px;box-shadow:0 1px 5px #0000000d}
 .ccat summary{cursor:pointer;min-height:48px;font-weight:700}
 .cqcard{background:var(--card);border-radius:var(--r);padding:18px;box-shadow:0 4px 16px #0000001a}
@@ -342,6 +342,22 @@ html[data-theme=dark] .srclink{color:#bac8ff}
 .srcitem{padding:10px 0;border-bottom:1px solid #f1f3f5}
 html[data-theme=dark] .srcitem{border-color:#2a3042}
 .mh-tile.t7{background:linear-gradient(135deg,#1b3a4b,#125a6e)}
+
+.ourans textarea[data-couple-notes]{min-height:56px;margin-top:0}
+.spouse-wrote{background:#fff3bf;color:#7a4b00;border-left:4px solid #f59f00;border-radius:10px;padding:8px 10px;margin:6px 0 10px;font-size:.88rem;font-weight:600}
+html[data-theme=dark] .spouse-wrote{background:#3d3415;color:#ffe066;border-color:#f59f00}
+#marHero{margin:12px 0 10px}
+#marAudioMini{margin-bottom:14px}
+#marAudioMini select{width:100%;margin-top:8px}
+.syncmodal{position:fixed;inset:0;background:#0008;z-index:80;display:flex;align-items:center;justify-content:center;padding:20px}
+.syncmodal[hidden]{display:none!important}
+.syncbox{background:#fff;color:#212529;border-radius:18px;padding:20px;max-width:400px;width:100%;box-shadow:0 12px 40px #0005}
+html[data-theme=dark] .syncbox{background:#1b2030;color:#e9ecef}
+.apanel .achips{gap:8px;margin:8px 0}
+.apanel .achips .chip{background:#0000002e;border-color:#ffffff66;color:#fff}
+.apanel .achips .chip.on{background:#fff;color:#1864ab;border-color:#fff}
+
+.switch[hidden],#aPicksWrap[hidden]{display:none!important}
 
 </style>
 </head>
@@ -454,7 +470,8 @@ html[data-theme=dark] .srcitem{border-color:#2a3042}
     <div class="bigrow"><button class="bigplay" id="heroPlay">▶ Play all</button><button class="bigrestart" id="heroRestart">↺ Start over</button></div></div>
   <div class="apanel" id="audioPanel">
     <div class="row" style="justify-content:space-between"><b>🎧 Audio mode</b><span class="small" style="color:#fff">works with the screen locked</span></div>
-    <label class="switch"><input type="checkbox" id="aPicks" checked> Read my picks only</label>
+    <div class="row achips" id="aLists" role="group" aria-label="Playlist"><button type="button" class="chip on" data-alist="civics">Civics</button><button type="button" class="chip" data-alist="marriage">Marriage</button></div>
+    <label class="switch" id="aPicksWrap"><input type="checkbox" id="aPicks" checked> Read my picks only</label>
     <select id="aTrack" aria-label="Recording"></select>
     <audio id="aud" controls preload="none" playsinline></audio>
     <div class="row arow"><button class="plb" id="aRestart" aria-label="Start over from the beginning" title="Start over">↺</button><button class="plb" id="aPrev" aria-label="Previous question">⏮</button><div class="chips" id="aRates"></div><button class="plb" id="aNext" aria-label="Next question">⏭</button></div>
@@ -1094,37 +1111,55 @@ const FULL_APP_URL="https://alfowusu.github.io/civics-128/";
 const AUDIO_CACHE="civics128-audio-v1";
 const AU={tracks:[],tr:null,q:0,ready:false,failed:false,json:null,pendingSeek:null,lastSave:0,stopAt:null};
 AU.loadP=AUDIO_BASE?fetch(AUDIO_BASE+"audio.json").then(r=>{if(!r.ok)throw new Error(r.status);return r.json();}).then(j=>(AU.json=j)).catch(()=>null):Promise.resolve(null);
-function auOpts(){S.audio=Object.assign({id:"civics128-all",t:0,rate:1},S.audio||{});return S.audio;}
+function auOpts(){S.audio=Object.assign({id:"civics128-all",t:0,rate:1,list:"civics"},S.audio||{});return S.audio;}
 const aud=()=>document.getElementById("aud");
 function fmtMin(s){s=Math.round(s);return `${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}`;}
 async function auInit(){const host=$("#audioPanel");if(!host||AU.ready)return;
   if(!AUDIO_BASE){host.innerHTML=`<b>🎧 Audio mode (works with the screen locked)</b><p class="small" style="margin:6px 0 0">Recorded audio of all 128 questions is in the full app. Open <a href="${FULL_APP_URL}" target="_blank" rel="noopener">${FULL_APP_URL}</a> and add it to your Home Screen.</p>`;return;}
   const j=AU.json||await AU.loadP||await fetch(AUDIO_BASE+"audio.json").then(r=>r.json()).catch(()=>null);
-  if(AU.ready)return;if(!j||!j.tracks){AU.failed=true;$("#aNow").textContent="Audio list unavailable. Connect to the internet once, then try again.";const f=$("#plFb");if(f)f.open=true;heroUI();return;}AU.allTracks=j.tracks;AU.pickTracks=j.pickTracks||[];AU.tracks=auActiveTracks();
-  const o=auOpts();if($("#aPicks"))$("#aPicks").checked=!!plOpts().picksOnly;
-  $("#aTrack").innerHTML=AU.tracks.map(t=>`<option value="${t.id}">${esc(t.title)} · ${Math.round(t.duration/60)} min</option>`).join("");
-  if(!AU.tracks.some(t=>t.id===o.id)){const fam=(o.id||"").replace(/-picks$/,"");o.id=(AU.tracks.find(t=>(t.family||String(t.id||"").replace(/-picks$/,""))===fam)||AU.tracks[0]).id;}
-  $("#aTrack").value=o.id;auLoad(o.id,o.t);
+  if(AU.ready)return;if(!j||!j.tracks){AU.failed=true;$("#aNow").textContent="Audio list unavailable. Connect to the internet once, then try again.";const f=$("#plFb");if(f)f.open=true;heroUI();return;}AU.allTracks=j.tracks;AU.pickTracks=j.pickTracks||[];AU.marriageTracks=j.marriageTracks||[];
+  const o=auOpts();if((AU.marriageTracks||[]).some(t=>t.id===o.id))o.list="marriage";
+  if($("#aPicks"))$("#aPicks").checked=!!plOpts().picksOnly;
+  AU.tracks=auActiveTracks();auFillSelect();
+  if(!AU.tracks.some(t=>t.id===o.id)){const fam=(o.id||"").replace(/-picks$/,"");o.id=(AU.tracks.find(t=>(t.family||String(t.id||"").replace(/-picks$/,""))===fam)||AU.tracks[0]||{}).id;}
+  if(o.id)$("#aTrack")&&($("#aTrack").value=o.id);if(o.id)auLoad(o.id,o.t);
   $("#aRates").innerHTML=[.75,1,1.25,1.5].map(r=>`<button class="chip ${o.rate===r?"on":""}" data-arate="${r}">${r}×</button>`).join("");
   const tot=auAllRecordings().reduce((s,t)=>s+t.bytes,0);$("#aDl").textContent=`⬇ Download audio for offline (${(tot/1e6).toFixed(0)} MB)`;auClips().then(cl=>{const t2=tot+cl.reduce((a,x)=>a+x.b,0);$("#aDl").textContent=`⬇ Download all audio for offline (${(t2/1e6).toFixed(0)} MB)`;});
   AU.ready=true;auCheckCached();heroUI();}
-function auActiveTracks(){return (plOpts().picksOnly&&AU.pickTracks&&AU.pickTracks.length)?AU.pickTracks:(AU.allTracks||AU.tracks||[]);}
-function auAllRecordings(){return (AU.allTracks||AU.tracks||[]).concat(AU.pickTracks||[]).filter((t,i,a)=>a.findIndex(x=>x.id===t.id)===i);}
+function auActiveTracks(){if((auOpts().list||"civics")==="marriage")return AU.marriageTracks||[];return (plOpts().picksOnly&&AU.pickTracks&&AU.pickTracks.length)?AU.pickTracks:(AU.allTracks||AU.tracks||[]);}
+function auAllRecordings(){return (AU.allTracks||AU.tracks||[]).concat(AU.pickTracks||[]).concat(AU.marriageTracks||[]).filter((t,i,a)=>a.findIndex(x=>x.id===t.id)===i);}
 function auFamily(t){return t.family||String(t.id||"").replace(/-picks$/,"");}
+function auFillSelect(){const sel=$("#aTrack");if(sel)sel.innerHTML=(AU.tracks||[]).map(t=>`<option value="${t.id}">${esc(t.title)} · ${Math.round(t.duration/60)} min</option>`).join("");
+  document.querySelectorAll("[data-alist]").forEach(b=>b.classList.toggle("on",b.dataset.alist===(auOpts().list||"civics")));
+  const wrap=$("#aPicksWrap");if(wrap)wrap.hidden=(auOpts().list||"civics")==="marriage";
+  auFillMarriageSelect();}
+function auFillMarriageSelect(){const sel=$("#marTrack");if(!sel)return;const list=AU.marriageTracks||[];
+  sel.innerHTML=list.map(t=>`<option value="${t.id}">${esc(t.title)} · ${Math.round(t.duration/60)} min</option>`).join("");
+  if(AU.tr&&list.some(t=>t.id===AU.tr.id))sel.value=AU.tr.id;}
+function auSetPlaylist(list,keepTrack){auOpts().list=list==="marriage"?"marriage":"civics";AU.tracks=auActiveTracks();auFillSelect();
+  if(!keepTrack){const first=AU.tracks[0];if(first){auOpts().id=first.id;auLoad(first.id,0);if($("#aTrack"))$("#aTrack").value=first.id;}}}
+function auFindTrack(id){return (AU.tracks||[]).find(x=>x.id===id)||(AU.marriageTracks||[]).find(x=>x.id===id)||(AU.allTracks||[]).find(x=>x.id===id)||(AU.pickTracks||[]).find(x=>x.id===id);}
 function auApplyPickMode(){if(!(AU.allTracks||[]).length||!AU.ready)return;const qn=AU.q,was=aud()&&!aud().paused,old=AU.tr,fam=old?auFamily(old):null;AU.tracks=auActiveTracks();
-  const sel=$("#aTrack");if(sel)sel.innerHTML=AU.tracks.map(t=>`<option value="${t.id}">${esc(t.title)} · ${Math.round(t.duration/60)} min</option>`).join("");
-  const neu=(fam&&AU.tracks.find(t=>auFamily(t)===fam))||AU.tracks[0];if(!neu)return;auLoad(neu.id,0);if(sel)sel.value=neu.id;
+  auFillSelect();
+  const neu=(fam&&AU.tracks.find(t=>auFamily(t)===fam))||AU.tracks[0];if(!neu)return;auLoad(neu.id,0);if($("#aTrack"))$("#aTrack").value=neu.id;
   if(qn){const st=(neu.questions.find(x=>x.n===qn)||{}).start;if(st!=null){if(aud().readyState>=1)aud().currentTime=st;else AU.pendingSeek=st;auNow(st);}}
   if(was)aud().play().catch(()=>{});heroUI();}
-function auLoad(id,t){const tr=AU.tracks.find(x=>x.id===id);if(!tr)return;AU.tr=tr;const a=aud();const want=AUDIO_BASE+tr.src.replace(/^audio\//,"");
+function auLoad(id,t){const tr=auFindTrack(id);if(!tr)return;
+  const wantList=((AU.marriageTracks||[]).some(x=>x.id===tr.id))?"marriage":"civics";
+  if((auOpts().list||"civics")!==wantList){auOpts().list=wantList;AU.tracks=auActiveTracks();auFillSelect();}
+  AU.tr=tr;const a=aud();const want=AUDIO_BASE+tr.src.replace(/^audio\//,"");
   if(!a.src.endsWith(want)){a.src=want;a.preload="metadata";}AU.pendingSeek=t||0;if(a.readyState>=1){a.currentTime=AU.pendingSeek;AU.pendingSeek=null;}
   auOpts().id=id;save();auNow(t||0);}
 function auQAt(t){const qs=AU.tr?AU.tr.questions:[];let n=0;for(const x of qs){if(x.start<=t+0.05)n=x.n;else break;}return n;}
-function auNow(t){const n=auQAt(t);const el=$("#aNow");if(el)el.textContent=n?`Now: Question ${n} · ${fmtMin(t)} / ${fmtMin(AU.tr?AU.tr.duration:0)}`:(AU.tr?`${AU.tr.title} · ${fmtMin(t)} / ${fmtMin(AU.tr.duration)}`:"");
+function auQObj(n){if(n==null||n===0||n==="")return null;if(typeof n==="string")return (typeof coupleFind==="function"&&coupleFind(n))||{id:n,n:n,q:n};return BYN[n]||null;}
+function auNow(t){const n=auQAt(t);const q=auQObj(n);const el=$("#aNow");
+  const label=q?(typeof n==="string"?q.q:`Question ${n}`):"";
+  if(el)el.textContent=label?`Now: ${label} · ${fmtMin(t)} / ${fmtMin(AU.tr?AU.tr.duration:0)}`:(AU.tr?`${AU.tr.title} · ${fmtMin(t)} / ${fmtMin(AU.tr.duration)}`:"");
   if(n!==AU.q){AU.q=n;auMeta();heroUI();if(!n)document.querySelectorAll("#listArea details.reading").forEach(d=>d.classList.remove("reading"));if(n&&$("#v-list").classList.contains("on")){document.querySelectorAll("#listArea details.reading").forEach(d=>d.classList.remove("reading"));const d=document.querySelector(`#listArea details[data-n="${n}"]`);
       if(d){d.classList.add("reading");d.open=true;if(document.visibilityState==="visible"&&!aud().paused){const y=d.getBoundingClientRect().top+scrollY-140;scrollTo({top:Math.max(0,y),behavior:"smooth"});}}}}}
-function auMeta(){try{if(!("mediaSession" in navigator)||!AU.tr)return;const q=AU.q?BYN[AU.q]:null;
-  if(window.MediaMetadata)navigator.mediaSession.metadata=new MediaMetadata({title:q?`Question ${q.n}: ${q.q}`:AU.tr.title,artist:"Civics 128 · 2025 civics test",album:AU.tr.title,
+function auMeta(){try{if(!("mediaSession" in navigator)||!AU.tr)return;const q=auQObj(AU.q);
+  const marriage=typeof AU.q==="string"||((AU.marriageTracks||[]).some(t=>AU.tr&&t.id===AU.tr.id));
+  if(window.MediaMetadata)navigator.mediaSession.metadata=new MediaMetadata({title:q?(typeof AU.q==="string"?q.q:`Question ${q.n}: ${q.q}`):AU.tr.title,artist:marriage?"Civics 128 · Couple interview":"Civics 128 · 2025 civics test",album:AU.tr.title,
     artwork:[{src:"icon-192.png",sizes:"192x192",type:"image/png"},{src:"icon-512.png",sizes:"512x512",type:"image/png"}]});}catch(e){}}
 function auSet(t){const a=aud();AU.stopAt=null;if(a.readyState>=1)a.currentTime=t;else AU.pendingSeek=t;auOpts().t=t;save();auNow(t);heroUI();}
 // stops: 0:00 (intro + category announcement) and the start of every question
@@ -1141,10 +1176,17 @@ function mainRestart(){if(audioOK()){if(PL.playing)plStop();auRestart();return;}
 function plRestart(){plOpts().pos=0;save();plBuild();plPlayFrom(0);}
 function heroUI(){const b=document.getElementById("heroPlay");if(!b)return;const sub=$("#heroSub");
   if(audioOK()){const a=aud(),t=a.readyState>=1?a.currentTime:auOpts().t;const tr=AU.tr||AU.tracks[0];
-    b.textContent=!a.paused?"⏸ Pause":t>3?`▶ Resume${AU.q?" · Q"+AU.q:""}`:"▶ Play all";
+    const qn=(AU.q&&typeof AU.q!=="string")?" · Q"+AU.q:"";
+    b.textContent=!a.paused?"⏸ Pause":t>3?`▶ Resume${qn}`:"▶ Play all";
     sub.textContent=`Recorded audio · ${tr.title} · works with the screen locked`;}
   else{const o=plOpts();const on=PL.playing&&!PL.paused;b.textContent=on?"⏸ Pause":(o.pos&&o.pos!==(PL.list[0]||{}).n)?`▶ Resume · Q${o.pos}`:"▶ Play all";
-    sub.textContent=AUDIO_BASE&&!AU.failed?"Loading recorded audio…":canSpeak?"Read aloud with this device’s voice · keep the screen on":"Read-aloud isn’t supported in this browser";b.disabled=!canSpeak&&!AUDIO_BASE;$("#heroRestart").disabled=b.disabled;}}
+    sub.textContent=AUDIO_BASE&&!AU.failed?"Loading recorded audio…":canSpeak?"Read aloud with this device’s voice · keep the screen on":"Read-aloud isn’t supported in this browser";b.disabled=!canSpeak&&!AUDIO_BASE;$("#heroRestart").disabled=b.disabled;}
+  const mb=document.getElementById("marPlay");
+  if(mb){if(audioOK()){const a=aud(),t=a.readyState>=1?a.currentTime:auOpts().t;const onM=AU.tr&&(AU.marriageTracks||[]).some(x=>x.id===AU.tr.id);
+    mb.textContent=!a.paused&&onM?"⏸ Pause":(onM&&t>3?"▶ Resume":"▶ Play all");
+    const ms=$("#marHeroSub");if(ms&&onM&&AU.tr)ms.textContent=`Recorded audio · ${AU.tr.title} · works with the screen locked`;}
+    else mb.textContent="▶ Play all";}
+  if(typeof auFillMarriageSelect==="function")auFillMarriageSelect();}
 function auSeekQ(n){AU.stopAt=null;let tr=AU.tr&&AU.tr.questions.some(x=>x.n===n)?AU.tr:AU.tracks.find(t=>t.questions.some(x=>x.n===n));if(!tr)return false;
   if(tr!==AU.tr){$("#aTrack").value=tr.id;auLoad(tr.id,0);}const st=tr.questions.find(x=>x.n===n).start;const a=aud();
   if(a.readyState>=1)a.currentTime=st;else AU.pendingSeek=st;a.play().catch(()=>{});return true;}
@@ -1175,9 +1217,10 @@ function auWire(){const a=aud();if(!a||a._wired)return;a._wired=true;
   a.addEventListener("loadedmetadata",()=>{if(AU.pendingSeek!=null){try{a.currentTime=AU.pendingSeek;}catch(e){}AU.pendingSeek=null;}a.playbackRate=auOpts().rate;auPos();});
   a.addEventListener("play",()=>{if(typeof plStop==="function"&&PL.playing)plStop();if(typeof clipA!=="undefined"&&clipA&&!clipA.paused)stopClip();a.playbackRate=auOpts().rate;auHandlers();auMeta();heroUI();try{navigator.mediaSession.playbackState="playing";}catch(e){}});
   a.addEventListener("pause",()=>{auOpts().t=a.currentTime;save();heroUI();try{navigator.mediaSession.playbackState="paused";}catch(e){}});
-  a.addEventListener("ended",()=>{auOpts().t=0;save();heroUI();});a.addEventListener("playing",heroUI);
+  a.addEventListener("ended",()=>{if(typeof auAdvanceMarriage==="function"&&auAdvanceMarriage())return;auOpts().t=0;save();heroUI();});a.addEventListener("playing",heroUI);
   a.addEventListener("timeupdate",()=>{if(AU.stopAt!=null&&a.currentTime>=AU.stopAt){AU.stopAt=null;a.pause();}auNow(a.currentTime);if(Date.now()-AU.lastSave>4000){AU.lastSave=Date.now();auOpts().t=a.currentTime;save();auPos();}});
   $("#aTrack").onchange=e=>{a.pause();auLoad(e.target.value,0);};
+  if($("#aLists")&&!$("#aLists")._wired){$("#aLists")._wired=true;$("#aLists").onclick=e=>{const b=e.target.closest("[data-alist]");if(!b)return;a.pause();auSetPlaylist(b.dataset.alist);};}
   if($("#aPicks"))$("#aPicks").onchange=e=>{plOpts().picksOnly=e.target.checked;save();if($("#plPicks"))$("#plPicks").checked=e.target.checked;auApplyPickMode();};
   $("#aRestart").onclick=auRestart;$("#aPrev").onclick=()=>auJump(-1);$("#aNext").onclick=()=>auJump(1);
   $("#aDl").onclick=auDownload;$("#aDel").onclick=auRemove;
@@ -1372,9 +1415,28 @@ function coupleTips(){return (typeof COUPLE!=="undefined"&&COUPLE.tips)||[];}
 function coupleNotes(){return (typeof COUPLE!=="undefined"&&COUPLE.notes)||[];}
 function coupleSources(){return (typeof COUPLE!=="undefined"&&COUPLE.sources)||[];}
 function coupleNotice(){return (typeof COUPLE!=="undefined"&&COUPLE.notice)||{items:[],note:""};}
-function coupleAns(id){S.couple=S.couple||{};return S.couple[id]||"";}
+function coupleFind(id){return coupleAllQ().find(q=>q.id===id);}
+function coupleNorm(v){if(!v)return {answer:"",answerAt:0,notes:"",notesAt:0};
+  if(typeof v==="string")return {answer:v,answerAt:0,notes:"",notesAt:0};
+  return {answer:v.answer||"",answerAt:v.answerAt||0,notes:v.notes||"",notesAt:v.notesAt||0,answerAlt:v.answerAlt||"",notesAlt:v.notesAlt||""};}
+function coupleGet(id){S.couple=S.couple||{};const n=coupleNorm(S.couple[id]);
+  if(typeof S.couple[id]!=="object"||!S.couple[id])S.couple[id]=n;
+  else{if(S.couple[id].answer===undefined)S.couple[id].answer=n.answer;if(!S.couple[id].answerAt)S.couple[id].answerAt=n.answerAt;
+    if(S.couple[id].notes===undefined)S.couple[id].notes=n.notes;if(!S.couple[id].notesAt)S.couple[id].notesAt=n.notesAt;}
+  return S.couple[id];}
+function coupleAns(id){return coupleGet(id).answer||"";}
+function coupleNote(id){return coupleGet(id).notes||"";}
+function spouseWroteHTML(text,kind){if(!text)return "";const label=kind==="you"?"You wrote":"Spouse wrote";return `<div class="spouse-wrote">${label}: ${esc(text)}</div>`;}
 function oftenPill(q){return q.often?` <span class="pill often">Reported often</span>`:"";}
-function coupleAnsBox(q){return `<div class="ourans"><label for="ans-${esc(q.id)}">Our answer</label><textarea id="ans-${esc(q.id)}" data-couple-ans="${esc(q.id)}" rows="2" placeholder="Write what you would actually say…">${esc(coupleAns(q.id))}</textarea></div>`;}
+function coupleAnsBox(q){const rec=coupleGet(q.id);
+  return `<div class="ourans">
+    <label for="ans-${esc(q.id)}">Our answer</label>
+    <textarea id="ans-${esc(q.id)}" data-couple-ans="${esc(q.id)}" rows="2" placeholder="Write what you would actually say…">${esc(rec.answer||"")}</textarea>
+    ${rec.answerAlt?spouseWroteHTML(rec.answerAlt,rec.answerAltKind):""}
+    <label for="notes-${esc(q.id)}">Notes</label>
+    <textarea id="notes-${esc(q.id)}" data-couple-notes="${esc(q.id)}" rows="2" placeholder="Extra details so you’re both 100% sure…">${esc(rec.notes||"")}</textarea>
+    ${rec.notesAlt?spouseWroteHTML(rec.notesAlt,rec.notesAltKind):""}
+  </div>`;}
 function linkList(src){return (src||[]).map(x=>`<a class="srclink" href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.title)}</a>`).join(" · ");}
 function renderChooser(){const el=$("#chooseArea");if(!el)return;
   el.innerHTML=`<div class="panel"><p style="margin:0">Your interview can cover two things: the <b>civics test</b> and questions about your <b>marriage</b> (I-751, with your spouse). Choose a section to practice. Next time, you’ll come back here only if you tap “Civics &amp; Marriage.”</p></div>
@@ -1387,6 +1449,11 @@ function renderMarriage(){const n=coupleAllQ().length,cats=coupleCats().length,d
   $("#marArea").innerHTML=`<div class="panel"><b>Couple interview</b>
     <p class="small">This is the marriage part of a combo interview: removing conditions on your residence (I-751) and naturalization (N-400). The officer can question both of you, sometimes separately. Practice out loud so your facts match.</p>
     <p class="small">These prompts come from public interview recaps and official N-400 topics. They are study tools, not an official list and not legal advice. Answer honestly — don’t invent matching details.</p></div>
+    <div class="hero" id="marHero"><b>🎧 Listen to marriage questions</b>
+      <span class="hsub" id="marHeroSub">Question plus a short hint · works with the screen locked</span>
+      <div class="bigrow"><button class="bigplay" id="marPlay" type="button">▶ Play all</button><button class="bigrestart" id="marRestart" type="button">↺ Start over</button></div></div>
+    <div class="apanel" id="marAudioMini"><div class="row" style="justify-content:space-between"><b>🎧 Marriage playlist</b><span class="small" style="color:#fff">works with the screen locked</span></div>
+      <select id="marTrack" aria-label="Marriage recording"></select></div>
     <h2>Practice together</h2>
     <div class="mh-grid">
       <button class="mh-tile t1" data-go="couplecats"><span class="e">📂</span><b>Question categories</b><small>${cats} topics · ${n} practice questions</small></button>
@@ -1396,7 +1463,18 @@ function renderMarriage(){const n=coupleAllQ().length,cats=coupleCats().length,d
       <button class="mh-tile t4" data-go="coupletips"><span class="e">💡</span><b>Tips</b><small>How the couple interview often works</small></button>
       <button class="mh-tile t5" data-go="couplechanges"><span class="e">📰</span><b>What’s changed lately</b><small>${coupleNotes().length} dated notes from official sources</small></button>
       <button class="mh-tile t6" data-go="couplesources"><span class="e">🔗</span><b>Sources</b><small>Where the practice questions came from</small></button>
-    </div>`;}
+    </div>
+    <div class="panel" style="margin-top:14px"><b>Share with my spouse</b>
+      <p class="small">Saves a link with your written answers, notes, notice-checklist checks, and document checks. No account and no server — the data is packed into the link. Your spouse opens it to merge onto their phone.</p>
+      <button class="btn" id="shareSpouse" type="button" style="width:100%">📤 Share with my spouse</button>
+      <p class="small" id="shareSpouseStatus" style="margin:8px 0 0"></p></div>`;
+  if($("#marPlay"))$("#marPlay").onclick=marriageToggle;
+  if($("#marRestart"))$("#marRestart").onclick=marriageRestart;
+  if($("#shareSpouse"))$("#shareSpouse").onclick=()=>shareWithSpouse();
+  if($("#marTrack"))$("#marTrack").onchange=e=>{marriageLoadTrack(e.target.value);};
+  const fill=()=>{if(typeof auFillMarriageSelect==="function")auFillMarriageSelect();if(typeof heroUI==="function")heroUI();};
+  if(typeof AUDIO_BASE!=="undefined"&&AUDIO_BASE&&typeof auInit==="function"){const p=auInit();Promise.resolve(p).then(fill);}
+  else fill();}
 function renderCoupleCats(){const cats=coupleCats();
   $("#ccatsArea").innerHTML=`<div class="panel"><p style="margin:0">Open a topic, read the questions, and write <b>Our answer</b> in your own words. Then use <b>Quiz each other</b> so one of you asks without showing the hint. A <span class="pill often">Reported often</span> tag means more than one public source mentioned that kind of question.</p>
     <p class="small" style="margin:8px 0 0">This is not an official USCIS list. Answer with what you actually remember.</p></div>
@@ -1484,7 +1562,138 @@ document.addEventListener("change",e=>{const doc=e.target.closest("[data-couple-
   const nt=e.target.closest("[data-notice-item]");
   if(nt&&e.target.matches("input[data-notice-item]")){S.notice=S.notice||{};S.notice[nt.dataset.noticeItem]=!!e.target.checked;save();const items=(coupleNotice().items||[]);const done=items.filter(d=>S.notice[d.id]).length;const el=$("#noticeProg");if(el)el.textContent=done+" of "+items.length+" done";}});
 document.addEventListener("input",e=>{const ta=e.target.closest("textarea[data-couple-ans]");
-  if(ta){S.couple=S.couple||{};S.couple[ta.dataset.coupleAns]=ta.value;save();}});
+  if(ta){const rec=coupleGet(ta.dataset.coupleAns);rec.answer=ta.value;rec.answerAt=Date.now();save();}
+  const nt=e.target.closest("textarea[data-couple-notes]");
+  if(nt){const rec=coupleGet(nt.dataset.coupleNotes);rec.notes=nt.value;rec.notesAt=Date.now();save();}});
+
+// ---- Marriage lock-screen playlist ----
+function isMarriageTrack(tr){return !!(tr&&((AU.marriageTracks||[]).some(t=>t.id===tr.id)||tr.kind==="marriage"));}
+function marriageCatTracks(){return (AU.marriageTracks||[]).filter(t=>t.id!=="m-often");}
+function ensureAuThen(fn){
+  if(!AUDIO_BASE){const el=$("#shareSpouseStatus");if(el)el.textContent="";alert("Recorded marriage audio is in the full app. Open it from your Home Screen.");return;}
+  const run=()=>{if(typeof audioOK==="function"&&audioOK())fn();};
+  if(typeof audioOK==="function"&&audioOK()){fn();return;}
+  const p=(typeof auInit==="function")?auInit():Promise.resolve();
+  Promise.resolve(p).then(()=>setTimeout(run,0));}
+function marriageLoadTrack(id,autoplay){ensureAuThen(()=>{if(typeof auSetPlaylist==="function")auSetPlaylist("marriage",true);const a=aud();if(a)a.pause();auLoad(id,0);if(autoplay){AU.stopAt=null;a.play().catch(()=>{});}if(typeof heroUI==="function")heroUI();});}
+function marriageToggle(){ensureAuThen(()=>{
+  if(typeof auSetPlaylist==="function")auSetPlaylist("marriage",true);
+  const a=aud();
+  if(!AU.tr||!isMarriageTrack(AU.tr)){const first=marriageCatTracks()[0]||(AU.marriageTracks||[])[0];if(first)auLoad(first.id,auOpts().id===first.id?auOpts().t:0);}
+  if(PL.playing)plStop();AU.stopAt=null;
+  if(a.paused)a.play().catch(()=>{});else a.pause();
+  if(typeof heroUI==="function")heroUI();});}
+function marriageRestart(){ensureAuThen(()=>{
+  if(typeof auSetPlaylist==="function")auSetPlaylist("marriage",true);
+  const first=marriageCatTracks()[0]||(AU.marriageTracks||[])[0];
+  if(first)auLoad(first.id,0);AU.stopAt=null;aud().play().catch(()=>{});if(typeof heroUI==="function")heroUI();});}
+function auAdvanceMarriage(){if(!AU.tr||!isMarriageTrack(AU.tr)||AU.tr.id==="m-often")return false;
+  const list=marriageCatTracks();const i=list.findIndex(t=>t.id===AU.tr.id);
+  if(i>=0&&i<list.length-1){auLoad(list[i+1].id,0);aud().play().catch(()=>{});if(typeof heroUI==="function")heroUI();return true;}
+  return false;}
+
+// ---- Pseudo-sync: compressed URL fragment (no server) ----
+function syncBuild(st){st=st||S;const answers={};
+  const couple=st.couple||{};
+  for(const id of Object.keys(couple)){
+    const rec=typeof couple[id]==="string"?{answer:couple[id],answerAt:0,notes:"",notesAt:0}:couple[id]||{};
+    const answer=rec.answer||"", notes=rec.notes||"";
+    if((answer&&answer.trim())||(notes&&notes.trim())){
+      answers[id]={answer,answerAt:rec.answerAt||0,notes,notesAt:rec.notesAt||0};
+    }
+  }
+  const notice={};for(const k of Object.keys(st.notice||{}))if(st.notice[k])notice[k]=true;
+  const docs={};for(const k of Object.keys(st.coupleDocs||{}))if(st.coupleDocs[k])docs[k]=true;
+  return {v:1,t:Date.now(),answers,notice,docs};}
+function syncPreview(payload){if(!payload)return {answers:0,checks:0};
+  const answers=Object.keys(payload.answers||{}).filter(id=>{const a=payload.answers[id]||{};return (a.answer&&String(a.answer).trim())||(a.notes&&String(a.notes).trim());}).length;
+  const checks=Object.values(payload.notice||{}).filter(Boolean).length+Object.values(payload.docs||{}).filter(Boolean).length;
+  return {answers,checks};}
+function b64urlFromBytes(u8){let bin="";const CHUNK=0x8000;for(let i=0;i<u8.length;i+=CHUNK)bin+=String.fromCharCode.apply(null,u8.subarray(i,i+CHUNK));
+  return btoa(bin).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");}
+function bytesFromB64url(s){s=String(s||"").replace(/-/g,"+").replace(/_/g,"/");while(s.length%4)s+="=";
+  const bin=atob(s);const u8=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u8[i]=bin.charCodeAt(i);return u8;}
+async function syncEncode(obj){const json=JSON.stringify(obj);
+  if(typeof CompressionStream==="function"){
+    const cs=new CompressionStream("deflate-raw");const w=cs.writable.getWriter();
+    w.write(new TextEncoder().encode(json));w.close();
+    const buf=await new Response(cs.readable).arrayBuffer();
+    return b64urlFromBytes(new Uint8Array(buf));
+  }
+  return "u."+b64urlFromBytes(new TextEncoder().encode(json));}
+async function syncDecode(s){if(!s)return null;
+  if(String(s).startsWith("u."))return JSON.parse(new TextDecoder().decode(bytesFromB64url(s.slice(2))));
+  const u8=bytesFromB64url(s);
+  if(typeof DecompressionStream==="function"){
+    const ds=new DecompressionStream("deflate-raw");const w=ds.writable.getWriter();
+    w.write(u8);w.close();
+    const buf=await new Response(ds.readable).arrayBuffer();
+    return JSON.parse(new TextDecoder().decode(buf));
+  }
+  return JSON.parse(new TextDecoder().decode(u8));}
+function mergeTextField(local,incoming,textKey,timeKey,altKey){
+  const lt=local[textKey]||"", it=incoming[textKey]||"";
+  const lAt=local[timeKey]||0, iAt=incoming[timeKey]||0;
+  const kindKey=altKey+"Kind";
+  if(!it && !lt) return;
+  if(!it) return;
+  if(!lt){local[textKey]=it;local[timeKey]=iAt;return;}
+  if(lt===it){local[timeKey]=Math.max(lAt,iAt);return;}
+  if(iAt>lAt){local[altKey]=lt;local[kindKey]="you";local[textKey]=it;local[timeKey]=iAt;}
+  else{local[altKey]=it;local[kindKey]="spouse";}}
+function syncMerge(state,payload){state=state||S;if(!payload)return {answers:0,checks:0,conflicts:0};
+  state.couple=state.couple||{};state.notice=state.notice||{};state.coupleDocs=state.coupleDocs||{};
+  let conflicts=0;
+  const incoming=payload.answers||{};
+  for(const id of Object.keys(incoming)){
+    const rec=typeof state.couple[id]==="string"?coupleNorm(state.couple[id]):Object.assign(coupleNorm(state.couple[id]),state.couple[id]||{});
+    mergeTextField(rec,incoming[id],"answer","answerAt","answerAlt");
+    mergeTextField(rec,incoming[id],"notes","notesAt","notesAlt");
+    state.couple[id]=rec;
+    if(rec.answerAlt||rec.notesAlt)conflicts++;
+  }
+  for(const k of Object.keys(payload.notice||{}))if(payload.notice[k])state.notice[k]=true;
+  for(const k of Object.keys(payload.docs||{}))if(payload.docs[k])state.coupleDocs[k]=true;
+  const prev=syncPreview(payload);
+  return {answers:prev.answers,checks:prev.checks,conflicts};}
+function syncLink(encoded){const base=location.origin&&location.origin!=="null"?location.origin:"";
+  const path=location.pathname||"/";
+  return base+path+(location.search||"")+"#sync="+encoded;}
+async function shareWithSpouse(){const payload=syncBuild(S);const enc=await syncEncode(payload);const url=syncLink(enc);
+  const prev=syncPreview(payload);
+  const text=`Our couple interview notes (${prev.answers} answer${prev.answers===1?"":"s"}, ${prev.checks} check${prev.checks===1?"":"s"})`;
+  const status=$("#shareSpouseStatus");
+  try{if(navigator.share){await navigator.share({title:"Civics 128 — share with my spouse",text,url});if(status)status.textContent="Shared.";return "shared";}}
+  catch(e){if(e&&e.name==="AbortError"){if(status)status.textContent="Share cancelled.";return "cancelled";}}
+  try{if(navigator.clipboard&&navigator.clipboard.writeText){await navigator.clipboard.writeText(url);if(status)status.textContent="Link copied. Send it to your spouse — they open it to merge.";
+    else alert("Link copied. Send it to your spouse — they open it to merge.");return "copied";}}
+  catch(e){}
+  prompt("Copy this link and send it to your spouse:",url);if(status)status.textContent="Copy the link and send it to your spouse.";return "prompted";}
+function hideSyncModal(){const m=$("#syncModal");if(m)m.hidden=true;}
+function showSyncPreview(payload){const prev=syncPreview(payload);
+  let m=$("#syncModal");
+  if(!m){m=document.createElement("div");m.id="syncModal";m.className="syncmodal";document.body.appendChild(m);}
+  m.hidden=false;
+  m.innerHTML=`<div class="syncbox" role="dialog" aria-modal="true" aria-labelledby="syncTitle">
+    <h2 id="syncTitle" style="margin-top:0">Shared from your spouse</h2>
+    <p id="syncPreviewLine">${prev.answers} answer${prev.answers===1?"":"s"}, ${prev.checks} check${prev.checks===1?"":"s"} from your spouse</p>
+    <p class="small">Checks are combined (kept if either of you marked them). For written answers and notes, the newest text is kept. If you both wrote something different, both are saved and marked “Spouse wrote.”</p>
+    <div class="row"><button class="btn" id="syncMergeBtn" type="button">Merge into this device</button>
+    <button class="btn ghost" id="syncCancelBtn" type="button">Not now</button></div></div>`;
+  $("#syncMergeBtn").onclick=()=>{syncMerge(S,payload);save();hideSyncModal();
+    try{history.replaceState(null,"",location.pathname+(location.search||"")+(S.section==="marriage"?"#marriage":""));}catch(e){}
+    const on=document.querySelector(".view.on");const id=on?on.id:"";
+    if(id==="v-couplecats")renderCoupleCats();
+    else if(id==="v-couplenotice")renderCoupleNotice();
+    else if(id==="v-coupledocs")renderCoupleDocs();
+    else if(id==="v-couplequiz")renderCoupleQuiz();
+    else if(id==="v-marriage"||S.section==="marriage")renderMarriage();
+  };
+  $("#syncCancelBtn").onclick=()=>{hideSyncModal();try{history.replaceState(null,"",location.pathname+(location.search||"")+(S.section==="marriage"?"#marriage":""));}catch(e){};};}
+async function checkIncomingSync(raw){if(!raw){const h=location.hash.slice(1);if(h.startsWith("sync="))raw=h.slice(5);else return;}
+  try{const payload=await syncDecode(raw);if(!payload||payload.v!==1){alert("Could not read the shared link.");return;}showSyncPreview(payload);}
+  catch(e){alert("Could not read the shared link.");}}
+
 const EXTGO={speak:speakIntro,report:renderReport,groups:renderGroups,choose:renderChooser,marriage:renderMarriage,couplecats:renderCoupleCats,couplequiz:()=>{CQ=null;renderCoupleQuiz()},coupledocs:renderCoupleDocs,coupletips:renderCoupleTips,couplechanges:renderCoupleChanges,couplesources:renderCoupleSources,couplenotice:renderCoupleNotice};
 
 // ---------- keyboard ----------
@@ -1495,14 +1704,21 @@ document.addEventListener("keydown",e=>{if(e.target.matches("input,textarea,sele
 // ---------- init ----------
 load();if(typeof applyTheme==="function")applyTheme();if(canSpeak)$("#sndBtn").textContent=S.auto?"🔊":"🔈";else $("#sndBtn").style.display="none";
 refreshStats();chips();updateHome();
-window.__civics={count:DATA.length,DATA,S:()=>S,SUGGESTED,GROUPS,COUPLE,myPicks,suggestedPicks,openSection};
+window.__civics={count:DATA.length,DATA,S:()=>S,SUGGESTED,GROUPS,COUPLE,myPicks,suggestedPicks,openSection,
+  coupleAns:typeof coupleAns==="function"?coupleAns:undefined,coupleGet:typeof coupleGet==="function"?coupleGet:undefined,coupleNote:typeof coupleNote==="function"?coupleNote:undefined,
+  syncBuild:typeof syncBuild==="function"?syncBuild:undefined,syncEncode:typeof syncEncode==="function"?syncEncode:undefined,syncDecode:typeof syncDecode==="function"?syncDecode:undefined,
+  syncMerge:typeof syncMerge==="function"?syncMerge:undefined,syncPreview:typeof syncPreview==="function"?syncPreview:undefined};
 if(typeof planInfo==="function"){window.__civics.planInfo=planInfo;window.__civics.weakOrMissed=weakOrMissed;window.__civics.nowDate=nowDate;}
 const START=["flash","quiz","mock","review","list","mine","speak","report","groups","choose","marriage","couplecats","couplequiz","coupledocs","coupletips","couplechanges","couplesources","couplenotice","home"];
-const h=location.hash.slice(1);
+const rawHash=location.hash.slice(1);
+const incomingSync=rawHash.startsWith("sync=")?rawHash.slice(5):null;
+const h=incomingSync?"":rawHash;
 if(START.includes(h))go(h==="home"?"home":h);
 else if(S.section==="marriage")go("marriage");
 else if(S.section==="civics")go("home");
 else go("choose");
+if(incomingSync&&typeof checkIncomingSync==="function")checkIncomingSync(incomingSync);
+addEventListener("hashchange",()=>{const hh=location.hash.slice(1);if(hh.startsWith("sync=")&&typeof checkIncomingSync==="function")checkIncomingSync(hh.slice(5));});
 </script>
 <script>if("serviceWorker" in navigator&&location.protocol!=="file:"){addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(e=>console.warn("SW registration failed",e)));}</script>
 </body>
