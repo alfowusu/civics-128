@@ -1,4 +1,4 @@
-const CACHE = "civics128-v24";
+const CACHE = "civics128-v25";
 const AUDIO_CACHE = "civics128-audio-v1"; // filled only when the user taps "Download audio for offline"
 const ASSETS = ["./", "index.html", "manifest.webmanifest", "icon-192.png", "icon-512.png", "apple-touch-icon.png", "audio/audio.json", "audio/clips.json"];
 self.addEventListener("install", e => {
@@ -6,8 +6,8 @@ self.addEventListener("install", e => {
 });
 self.addEventListener("activate", e => {
   e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE && !k.startsWith("civics128-audio")).map(k => caches.delete(k))))
-    // purge voice clips of removed features (only the civics question clips sq1..sq128 remain)
-    .then(() => caches.open(AUDIO_CACHE)).then(c => c.keys().then(ks => Promise.all(ks.filter(r => { const p = new URL(r.url).pathname; return p.includes("/audio/clips/") && !/\/sq\d+\.mp3$/.test(p); }).map(r => c.delete(r))))).catch(() => {})
+    // purge voice clips of removed features (keep civics sq1..sq128 and marriage mq-/mh-/cx- clips)
+    .then(() => caches.open(AUDIO_CACHE)).then(c => c.keys().then(ks => Promise.all(ks.filter(r => { const p = new URL(r.url).pathname; return p.includes("/audio/clips/") && !/\/(sq\d+|m[qh]-[\w-]+|cx-[0-9a-f]+)\.mp3$/.test(p); }).map(r => c.delete(r))))).catch(() => {})
     .then(() => self.clients.claim()));
 });
 // Serve a byte range from a cached full MP3 (Safari's <audio> always asks for ranges).
