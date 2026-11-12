@@ -2209,7 +2209,7 @@ const ASKAI_MODEL="gemini-3.5-flash-lite";
 const ASKAI_RPM=6;
 const ASKAI_WINDOW_MS=60000;
 const ASKAI_CHATS={}; // in-memory only; never written to S, civics128.v1, or the cloud payload
-let ASKAI={open:false,key:"",kind:"",ctx:null,sending:false,times:[],ai:null,busyMsg:"",lastErr:""};
+let ASKAI={open:false,key:"",kind:"",ctx:null,sending:false,times:[],ai:null,busyMsg:"",lastErr:"",draft:"",queue:[],streamText:""};
 function askAiBtn(kind,id){return `<button type="button" class="askai-btn" data-ask-ai="${kind}:${esc(String(id))}" aria-label="Ask AI about this question">✨ Ask AI</button>`;}
 function askAiAvailable(){return !!(typeof CLOUD_CFG!=="undefined"&&CLOUD_CFG&&CLOUD_CFG.apiKey);}
 function askAiOnline(){return typeof navigator==="undefined"||navigator.onLine!==false;}
@@ -2286,7 +2286,15 @@ function askAiClose(){ASKAI.open=false;const m=$("#askaiModal");if(m)m.hidden=tr
 function askAiSpeak(text){if(!text)return;if(typeof stopSpeech==="function")stopSpeech();
   if(typeof speakText==="function"){const tok=(typeof SAYT==="number"?++SAYT:0);speakText(askAiPlain(text),null,tok);}
   else if(typeof canSpeak!=="undefined"&&canSpeak){try{const u=new SpeechSynthesisUtterance(askAiPlain(text));u.lang="en-US";speechSynthesis.speak(u);}catch(e){}}}
-function askAiRender(){let m=$("#askaiModal");
+function askAiSaveDraft(){const t=$("#askaiInput");if(t)ASKAI.draft=t.value;}
+function askAiRestoreDraft(keepFocus,sel){const n=$("#askaiInput");if(!n)return;
+  n.value=ASKAI.draft||"";
+  n.oninput=()=>{ASKAI.draft=n.value;};
+  if(keepFocus){try{n.focus({preventScroll:true});if(sel)n.setSelectionRange(sel[0],sel[1]);}catch(e){}}}
+function askAiRender(){const prev=$("#askaiInput");if(prev)ASKAI.draft=prev.value;
+  const keepFocus=!!(prev&&document.activeElement===prev);
+  const sel=keepFocus?[prev.selectionStart,prev.selectionEnd]:null;
+  let m=$("#askaiModal");
   if(!m){m=document.createElement("div");m.id="askaiModal";m.className="askai-modal";m.hidden=true;
     m.addEventListener("click",e=>{if(e.target===m)askAiClose();});
     document.body.appendChild(m);}
@@ -2302,51 +2310,110 @@ function askAiRender(){let m=$("#askaiModal");
     return `<div class="askai-msg ai"><div class="askai-bubble">${askAiEsc(msg.text)}</div>
       <button type="button" class="readthis askai-speak" data-ask-speak="${i}" aria-label="Read this answer">🔊</button></div>`;
   }).join("");
-  const thinking=ASKAI.sending?`<div class="askai-msg ai"><div class="askai-bubble thinking">Thinking…</div></div>`:"";
+  let live="";
+  if(ASKAI.sending)live=ASKAI.streamText
+    ?`<div class="askai-msg ai"><div class="askai-bubble stream">${askAiEsc(ASKAI.streamText)}</div></div>`
+    :`<div class="askai-msg ai"><div class="askai-bubble thinking">Thinking…</div></div>`;
   const err=ASKAI.busyMsg?`<p class="askai-err">${esc(ASKAI.busyMsg)}</p>`+(ASKAI.lastErr?`<p class="askai-errdetail">${esc(ASKAI.lastErr)}</p>`:""):"";
   const offlineNote=!online?`<div class="askai-offnote">Ask AI needs internet. Everything else in the app still works offline — open this again when you’re back online.</div>`:"";
-  const chipHTML=online&&!sess.msgs.length?`<div class="askai-chips">${chips.map((c,i)=>`<button type="button" class="chip" data-ask-chip="${i}">${esc(c[0])}</button>`).join("")}</div>`:"";
+  const chipHTML=online&&!sess.msgs.length&&!ASKAI.sending?`<div class="askai-chips">${chips.map((c,i)=>`<button type="button" class="chip" data-ask-chip="${i}">${esc(c[0])}</button>`).join("")}</div>`:"";
   m.hidden=false;
   m.innerHTML=`<div class="askai-sheet" role="dialog" aria-modal="true" aria-labelledby="askaiTitle">
     <div class="askai-head"><h2 id="askaiTitle">✨ Ask AI</h2><button type="button" class="iconbtn askai-x" id="askaiClose" aria-label="Close">✕</button></div>
     <div class="askai-body" id="askaiBody">
       ${ctxBits.join("")}
-      <div class="askai-thread" id="askaiThread">${msgs}${thinking}</div>
+      <div class="askai-thread" id="askaiThread">${msgs}${live}</div>
       ${err}${offlineNote}${chipHTML}
     </div>
     <p class="askai-voice">🔊 This voice is muted when the iPhone is on silent.</p>
     <form class="askai-form" id="askaiForm">
-      <input id="askaiInput" class="typein" autocomplete="off" autocorrect="on" enterkeyhint="send" aria-label="Your question" placeholder="${online?"Ask a follow-up…":"Connect to the internet to ask"}" ${online&&!ASKAI.sending?"":"disabled"}>
-      <button class="btn" type="submit" ${online&&!ASKAI.sending?"":"disabled"}>Send</button>
+      <input id="askaiInput" class="typein" autocomplete="off" autocorrect="on" enterkeyhint="send" aria-label="Your question" placeholder="${online?"Ask a follow-up…":"Connect to the internet to ask"}" ${online?"":"disabled"}>
+      <button class="btn" type="submit" ${online?"":"disabled"}>Send</button>
     </form>
   </div>`;
   $("#askaiClose").onclick=()=>askAiClose();
   const form=$("#askaiForm");if(form)form.onsubmit=e=>{e.preventDefault();const inp=$("#askaiInput");askAiSend(inp?inp.value:"");};
   m.querySelectorAll("[data-ask-chip]").forEach(b=>b.onclick=()=>askAiSend(askAiChips(ctx.kind)[+b.dataset.askChip][1]));
   m.querySelectorAll("[data-ask-speak]").forEach(b=>b.onclick=e=>{e.preventDefault();e.stopPropagation();const msg=sess.msgs[+b.dataset.askSpeak];if(msg&&msg.role==="model")askAiSpeak(msg.text);});
-  const thread=$("#askaiThread");if(thread)thread.scrollTop=thread.scrollHeight;}
-async function askAiSend(raw){const text=String(raw||"").trim();if(!text||ASKAI.sending||!ASKAI.ctx)return;
+  const thread=$("#askaiThread");if(thread)thread.scrollTop=thread.scrollHeight;
+  askAiRestoreDraft(keepFocus,sel);}
+function askAiPatchStream(){
+  const thread=$("#askaiThread");if(!thread)return;
+  thread.querySelectorAll(".askai-bubble.thinking").forEach(el=>{const m=el.closest(".askai-msg");if(m)m.remove();});
+  let bub=thread.querySelector(".askai-bubble.stream");
+  if(!bub){thread.insertAdjacentHTML("beforeend",`<div class="askai-msg ai"><div class="askai-bubble stream">${askAiEsc(ASKAI.streamText)}</div></div>`);}
+  else bub.innerHTML=askAiEsc(ASKAI.streamText);
+  thread.scrollTop=thread.scrollHeight;}
+function askAiSleep(ms){return new Promise(r=>setTimeout(r,ms));}
+function askAiTransient(msg){const s=String(msg||"");
+  if(/429|resource.exhausted|quota|rate.?limit|permission|403|restricted|API_KEY|referer|referrer|unauth|API_KEY_SERVICE_BLOCKED|are blocked|empty|no-config/i.test(s))return false;
+  return /Load failed|Failed to fetch|network connection was lost|The Internet connection appears to be offline|cancelled|canceled|unavailable|timeout|Timeout has expired|PARSE_FAILED|Failed to parse stream|Error parsing JSON|\b5\d\d\b|internal error|INTERNAL|service unavailable|bad gateway/i.test(s);}
+function askAiMakeChat(svc,sess){
+  const model=svc.aiM.getGenerativeModel(svc.ai,{model:ASKAI_MODEL,systemInstruction:askAiSystem(ASKAI.ctx),generationConfig:{maxOutputTokens:450,temperature:.7}});
+  const history=sess.msgs.slice(0,-1).filter(x=>x.text).map(x=>({role:x.role==="user"?"user":"model",parts:[{text:x.text}]}));
+  return history.length?model.startChat({history}):model.startChat();}
+function askAiChunkText(chunk){if(!chunk)return"";
+  try{if(typeof chunk.text==="function")return chunk.text()||"";}catch(e){}
+  return chunk.text||"";}
+async function askAiStreamOnce(chat,text){
+  if(!chat||typeof chat.sendMessageStream!=="function")throw new Error("no-stream");
+  const result=await chat.sendMessageStream(text);
+  let reply="";
+  if(result&&result.stream){
+    for await(const chunk of result.stream){
+      const piece=askAiChunkText(chunk);
+      if(piece){reply+=piece;ASKAI.streamText=reply;askAiPatchStream();}
+    }
+  }
+  if(!reply&&result&&result.response){
+    const final=await result.response;
+    reply=(final&&typeof final.text==="function"?final.text():"")||"";
+    if(reply){ASKAI.streamText=reply;askAiPatchStream();}
+  }
+  return askAiPlain(reply);}
+async function askAiUnaryOnce(chat,text){
+  const result=await chat.sendMessage(text);
+  return askAiPlain((result&&result.response&&typeof result.response.text==="function"?result.response.text():"")||"");}
+async function askAiOnce(svc,sess,text){
+  const streamChat=askAiMakeChat(svc,sess);
+  try{const reply=await askAiStreamOnce(streamChat,text);if(reply)return reply;}
+  catch(e){if(!askAiTransient((e&&(e.message||e.code))||e)&&ASKAI.streamText)throw e;}
+  ASKAI.streamText="";
+  return askAiUnaryOnce(askAiMakeChat(svc,sess),text);}
+async function askAiWithRetry(svc,sess,text){
+  let last;
+  for(let attempt=0;attempt<3;attempt++){
+    if(attempt>0){
+      if(!askAiOnline())break;
+      await askAiSleep(400*Math.pow(2,attempt-1));
+    }
+    try{const reply=await askAiOnce(svc,sess,text);if(!reply)throw new Error("empty");return reply;}
+    catch(e){last=e;const msg=String((e&&(e.message||e.code))||e||"");
+      if(!askAiTransient(msg))throw e;
+      ASKAI.streamText="";}
+  }
+  throw last||new Error("empty");}
+async function askAiFlushQueue(){if(ASKAI.sending)return;const next=(ASKAI.queue||[]).shift();if(next)askAiSend(next);}
+async function askAiSend(raw){const text=String(raw||"").trim();if(!text||!ASKAI.ctx)return;
+  if(ASKAI.sending){ASKAI.queue.push(text);ASKAI.draft="";const inp=$("#askaiInput");if(inp)inp.value="";return;}
   if(!askAiOnline()){ASKAI.busyMsg="Ask AI needs internet. Everything else in the app still works offline.";askAiRender();return;}
   if(!askAiRateOk()){ASKAI.busyMsg=askAiRateWait();askAiRender();return;}
-  const sess=askAiSession(ASKAI.key);sess.msgs.push({role:"user",text});ASKAI.sending=true;ASKAI.busyMsg="";ASKAI.lastErr="";askAiRender();
+  const sess=askAiSession(ASKAI.key);sess.msgs.push({role:"user",text});ASKAI.sending=true;ASKAI.busyMsg="";ASKAI.lastErr="";ASKAI.streamText="";
+  if((ASKAI.draft||"").trim()===text)ASKAI.draft="";
+  askAiRender();
   try{const svc=await askAiEnsure();
-    const model=svc.aiM.getGenerativeModel(svc.ai,{model:ASKAI_MODEL,systemInstruction:askAiSystem(ASKAI.ctx),generationConfig:{maxOutputTokens:450,temperature:.7}});
-    const history=sess.msgs.slice(0,-1).filter(x=>x.text).map(x=>({role:x.role==="user"?"user":"model",parts:[{text:x.text}]}));
-    // Some Gemini 3.x flash-lite models reject a history that ends on a model turn; startChat with prior turns is fine when the next send is the user.
-    const chat=history.length?model.startChat({history}):model.startChat();
     ASKAI.times.push(Date.now());
-    const result=await chat.sendMessage(text);
-    const reply=askAiPlain((result&&result.response&&typeof result.response.text==="function"?result.response.text():"")||"");
-    if(!reply)throw new Error("empty");
-    sess.msgs.push({role:"model",text:reply});ASKAI.busyMsg="";}
+    const reply=await askAiWithRetry(svc,sess,text);
+    sess.msgs.push({role:"model",text:reply});ASKAI.busyMsg="";ASKAI.lastErr="";ASKAI.streamText="";}
   catch(e){console.warn("ask ai failed",e);sess.msgs.pop();
     const msg=String((e&&(e.message||e.code))||e||"");
     ASKAI.lastErr=msg.replace(/AIza[0-9A-Za-z_-]+/g,"[key]").slice(0,240);
+    ASKAI.streamText="";
     if(/429|resource.exhausted|quota|rate.?limit/i.test(msg))ASKAI.busyMsg="The free daily questions are used up for now. Try again later today.";
     else if(/permission|403|restricted|API_KEY|referer|referrer|unauth|API_KEY_SERVICE_BLOCKED|are blocked/i.test(msg))ASKAI.busyMsg="Ask AI couldn’t start right now. Try again in a minute.";
-    else if(!askAiOnline()||/offline|network|Failed to fetch|Load failed|The Internet connection appears to be offline|network connection was lost|cancelled|canceled|unavailable/i.test(msg))ASKAI.busyMsg="Ask AI needs internet. Everything else in the app still works offline.";
+    else if(!askAiOnline())ASKAI.busyMsg="Ask AI needs internet. Everything else in the app still works offline.";
     else ASKAI.busyMsg="I couldn’t get an answer just then. Please try again.";}
-  finally{ASKAI.sending=false;askAiRender();}}
+  finally{ASKAI.sending=false;askAiRender();askAiFlushQueue();}}
 document.addEventListener("click",e=>{
   const b=e.target.closest("[data-ask-ai]");
   if(!b)return;e.preventDefault();e.stopPropagation();askAiOpen(b.dataset.askAi);
