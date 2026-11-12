@@ -2223,7 +2223,8 @@ if(typeof AbortSignal!=="undefined"&&typeof AbortSignal.any!=="function"){
     return ac.signal;
   };
 }
-const ASKAI_MODEL="gemini-3.5-flash-lite";
+const ASKAI_MODEL="gemini-3.8-flash";
+const ASKAI_FALLBACK_MODEL="gemini-3.5-flash-lite";
 const ASKAI_RPM=6;
 const ASKAI_WINDOW_MS=60000;
 const ASKAI_CHATS={}; // in-memory only; never written to S, civics128.v1, or the cloud payload
@@ -2256,9 +2257,9 @@ Rules you must follow:
 - If you are unsure of a fact, say so clearly. Do not guess at dates, names, or numbers.
 - Write in short, plain English. A few short paragraphs at most. No bullet-wall or legal jargon.
 - Start directly with the answer. No greetings (no "Hello", "Hi there"), no praise or cheerleading (no "Great question", "You're doing fantastic"), and no sign-off. Talk like a knowledgeable friend, not a cheerleader.
-- Memory tips should be quirky, fun, and easy to remember — like a little joke or word play. Keep them respectful.
-- When the official answer is a list (for example the wars the United States fought in the 1800s), memory tips should tie the actual items together so the whole list is easier to recall, not only one item.
-- If the applicant says a tip or explanation is not good enough, or asks you to try again, do not repeat the same wording and do not re-list the official answers. Offer a clearly different approach: a different mnemonic style, a short story, an acronym, or a vivid image tied to the real history. Keep it short.
+- Memory tips should connect to the real history or meaning of the answer, not random silly images. Keep them short and easy to recall.
+- When the official answer is a list (for example the wars the United States fought in the 1800s), memory tips should tie the actual items together in a way that reflects what happened — for example, an expanding circle of conflicts: Britain, then Mexico, then itself, then Spain. Do not invent a tip that ignores the real list.
+- If the applicant says a tip or explanation is not good enough, or asks you to try again, do not repeat the same wording and do not re-list the official answers. Offer a clearly different historically grounded approach: a different mnemonic, a short true story, an acronym from the real names, or a vivid image that maps to the actual history. Keep it short.
 - Do not discuss immigration case strategy, and do not claim to be USCIS.`;
   return `You are a clear, friendly practice coach for a USCIS combo interview: the marriage questions on the joint I-751 (removing conditions on residence) plus naturalization (N-400). Two spouses will attend together.
 
@@ -2273,18 +2274,18 @@ Rules you must follow:
 - These practice prompts come from public interview recaps and official N-400 topics. They are study tools, not an official list and not legal advice. Say so if asked.
 - Write in short, plain English. A few short paragraphs at most.
 - Start directly with the answer. No greetings (no "Hello", "Hi there"), no praise or cheerleading (no "Great question", "You're doing fantastic"), and no sign-off. Talk like a knowledgeable friend, not a cheerleader.
-- Memory tips should be quirky, fun, and easy to remember, and must be based only on what they actually told you.
+- Memory tips should connect to the real meaning of what they told you, not random silly images. Keep them short, and use only facts they have actually told you.
 - If they say a tip or explanation is not good enough, or ask you to try again, do not repeat the same wording. Offer a clearly different approach and keep it short, still using only facts they have actually told you.`;}
 function askAiChips(kind){return kind==="m"?[
   ["Quiz me like an officer","Quiz me like an officer would. Ask one question at a time and wait for my answer."],
   ["Help me phrase an honest answer","Help me phrase an honest answer to this question. Do not invent any facts I have not told you."],
   ["What might they ask next?","What might the officer ask next about this topic?"],
-  ["Give me a memory tip","Give me a quirky, fun memory tip — only using facts I have actually told you."]
+  ["Give me a memory tip","Give me a short memory tip that connects to what I actually told you. Do not invent facts."]
 ]:[
   ["Why is this the answer?","Why is this the answer?"],
   ["Tell me the story behind it","Tell me the story behind it."],
   ["Explain a word","Explain any hard words in this question or the official answer, in simple English."],
-  ["Give me a memory tip","Give me a quirky, fun memory tip so this answer sticks."]
+  ["Give me a memory tip","Give me a short memory tip that ties this answer to the real history."]
 ];}
 function askAiRateOk(){const now=Date.now();ASKAI.times=ASKAI.times.filter(t=>now-t<ASKAI_WINDOW_MS);return ASKAI.times.length<ASKAI_RPM;}
 function askAiRateWait(){const now=Date.now();const oldest=ASKAI.times[0]||now;const sec=Math.max(1,Math.ceil((ASKAI_WINDOW_MS-(now-oldest))/1000));return "Easy, let’s pause for about "+sec+" second"+(sec===1?"":"s")+" so we don’t use up the free daily questions too fast.";}
@@ -2384,10 +2385,12 @@ function askAiHistory(sess){
   }
   if(out.length&&out[out.length-1].role!=="model")out.pop();
   return out;}
-function askAiMakeChat(svc,sess){
-  const model=svc.aiM.getGenerativeModel(svc.ai,{model:ASKAI_MODEL,systemInstruction:askAiSystem(ASKAI.ctx),generationConfig:{maxOutputTokens:450,temperature:.9}});
+function askAiMakeChat(svc,sess,modelName){
+  const model=svc.aiM.getGenerativeModel(svc.ai,{model:modelName||ASKAI_MODEL,systemInstruction:askAiSystem(ASKAI.ctx),generationConfig:{maxOutputTokens:450,temperature:.9}});
   const history=askAiHistory(sess);
   return history.length?model.startChat({history}):model.startChat();}
+function askAiFallbackErr(msg){const s=String(msg||"");
+  return /429|resource.exhausted|quota|rate.?limit|not.?found|404|NOT_FOUND|model[_\s-]?not[_\s-]?found|is not found|does not exist|unknown model|invalid model/i.test(s);}
 function askAiEnqueue(text){
   ASKAI.queue=ASKAI.queue||[];
   if(ASKAI.pending&&text===ASKAI.pending)return false;
@@ -2415,23 +2418,28 @@ async function askAiStreamOnce(chat,text){
 async function askAiUnaryOnce(chat,text){
   const result=await chat.sendMessage(text);
   return askAiPlain((result&&result.response&&typeof result.response.text==="function"?result.response.text():"")||"");}
-async function askAiOnce(svc,sess,text){
-  const streamChat=askAiMakeChat(svc,sess);
+async function askAiOnce(svc,sess,text,modelName){
+  const streamChat=askAiMakeChat(svc,sess,modelName);
   try{const reply=await askAiStreamOnce(streamChat,text);if(reply)return reply;}
   catch(e){if(!askAiTransient((e&&(e.message||e.code))||e)&&ASKAI.streamText)throw e;}
   ASKAI.streamText="";
-  return askAiUnaryOnce(askAiMakeChat(svc,sess),text);}
+  return askAiUnaryOnce(askAiMakeChat(svc,sess,modelName),text);}
 async function askAiWithRetry(svc,sess,text){
   let last;
-  for(let attempt=0;attempt<3;attempt++){
-    if(attempt>0){
-      if(!askAiOnline())break;
-      await askAiSleep(400*Math.pow(2,attempt-1));
+  const models=[ASKAI_MODEL];
+  if(ASKAI_FALLBACK_MODEL&&ASKAI_FALLBACK_MODEL!==ASKAI_MODEL)models.push(ASKAI_FALLBACK_MODEL);
+  for(const modelName of models){
+    for(let attempt=0;attempt<3;attempt++){
+      if(attempt>0){
+        if(!askAiOnline())break;
+        await askAiSleep(400*Math.pow(2,attempt-1));
+      }
+      try{const reply=await askAiOnce(svc,sess,text,modelName);if(!reply)throw new Error("empty");ASKAI.activeModel=modelName;return reply;}
+      catch(e){last=e;const msg=String((e&&(e.message||e.code))||e||"");
+        if(askAiFallbackErr(msg)&&modelName===ASKAI_MODEL){ASKAI.streamText="";break;}
+        if(!askAiTransient(msg))throw e;
+        ASKAI.streamText="";}
     }
-    try{const reply=await askAiOnce(svc,sess,text);if(!reply)throw new Error("empty");return reply;}
-    catch(e){last=e;const msg=String((e&&(e.message||e.code))||e||"");
-      if(!askAiTransient(msg))throw e;
-      ASKAI.streamText="";}
   }
   throw last||new Error("empty");}
 async function askAiFlushQueue(){if(ASKAI.sending)return;const next=(ASKAI.queue||[]).shift();if(next)return askAiSend(next);}
@@ -2711,7 +2719,7 @@ window.__civics={count:DATA.length,DATA,S:()=>S,SUGGESTED,GROUPS,COUPLE,myPicks,
   syncMerge:typeof syncMerge==="function"?syncMerge:undefined,syncPreview:typeof syncPreview==="function"?syncPreview:undefined};
 if(typeof cloudBoot==="function"){window.__civics.cloud={CLOUD:()=>CLOUD,cloudBuild,cloudMergePayload,cloudApply,cloudStamp,cloudNewCode,cloudNormCode,cloudCodeValid,cloudDocId,cloudSeal,cloudOpen,cloudSyncNow,cloudExists,cloudTurnOff,cloudFb};cloudBoot();}
 if(typeof planInfo==="function"){window.__civics.planInfo=planInfo;window.__civics.weakOrMissed=weakOrMissed;window.__civics.nowDate=nowDate;}
-if(typeof askAiOpen==="function"){window.__civics.askAi={ASKAI:()=>ASKAI,ASKAI_CHATS,ASKAI_MODEL,askAiOpen,askAiClose,askAiSend,askAiBtn,askAiAvailable,askAiHistory,askAiClearComposer,askAiEnqueue};}
+if(typeof askAiOpen==="function"){window.__civics.askAi={ASKAI:()=>ASKAI,ASKAI_CHATS,ASKAI_MODEL,ASKAI_FALLBACK_MODEL,askAiOpen,askAiClose,askAiSend,askAiBtn,askAiAvailable,askAiHistory,askAiClearComposer,askAiEnqueue,askAiFallbackErr,askAiWithRetry};}
 if(typeof renderProgress==="function"){window.__civics.progress={renderProgress,progTopics,progQStat,progAttempts,progWeighted,coupleTopicStats,coupleMarkSeen};}
 const START=["flash","quiz","mock","review","list","mine","speak","report","groups","progress","choose","marriage","couplecats","couplequiz","coupledocs","coupletips","couplechanges","couplesources","couplenotice","home"];
 const rawHash=location.hash.slice(1);
