@@ -2228,7 +2228,7 @@ const ASKAI_FALLBACK_MODEL="gemini-3.5-flash-lite";
 const ASKAI_RPM=6;
 const ASKAI_WINDOW_MS=60000;
 const ASKAI_CHATS={}; // in-memory only; never written to S, civics128.v1, or the cloud payload
-let ASKAI={open:false,key:"",kind:"",ctx:null,sending:false,times:[],ai:null,busyMsg:"",lastErr:"",draft:"",queue:[],streamText:"",pending:""};
+let ASKAI={open:false,key:"",kind:"",ctx:null,sending:false,times:[],ai:null,busyMsg:"",lastErr:"",draft:"",queue:[],streamText:"",pending:"",preferFallback:false};
 function askAiBtn(kind,id){return `<button type="button" class="askai-btn" data-ask-ai="${kind}:${esc(String(id))}" aria-label="Ask AI about this question">✨ Ask AI</button>`;}
 function askAiAvailable(){return !!(typeof CLOUD_CFG!=="undefined"&&CLOUD_CFG&&CLOUD_CFG.apiKey);}
 function askAiOnline(){return typeof navigator==="undefined"||navigator.onLine!==false;}
@@ -2421,13 +2421,16 @@ async function askAiUnaryOnce(chat,text){
 async function askAiOnce(svc,sess,text,modelName){
   const streamChat=askAiMakeChat(svc,sess,modelName);
   try{const reply=await askAiStreamOnce(streamChat,text);if(reply)return reply;}
-  catch(e){if(!askAiTransient((e&&(e.message||e.code))||e)&&ASKAI.streamText)throw e;}
+  catch(e){const msg=(e&&(e.message||e.code))||e;
+    if(askAiFallbackErr(msg)||(!askAiTransient(msg)&&ASKAI.streamText))throw e;}
   ASKAI.streamText="";
   return askAiUnaryOnce(askAiMakeChat(svc,sess,modelName),text);}
 async function askAiWithRetry(svc,sess,text){
   let last;
-  const models=[ASKAI_MODEL];
+  const models=[];
+  if(!ASKAI.preferFallback)models.push(ASKAI_MODEL);
   if(ASKAI_FALLBACK_MODEL&&ASKAI_FALLBACK_MODEL!==ASKAI_MODEL)models.push(ASKAI_FALLBACK_MODEL);
+  if(!models.length)models.push(ASKAI_MODEL);
   for(const modelName of models){
     for(let attempt=0;attempt<3;attempt++){
       if(attempt>0){
@@ -2436,7 +2439,7 @@ async function askAiWithRetry(svc,sess,text){
       }
       try{const reply=await askAiOnce(svc,sess,text,modelName);if(!reply)throw new Error("empty");ASKAI.activeModel=modelName;return reply;}
       catch(e){last=e;const msg=String((e&&(e.message||e.code))||e||"");
-        if(askAiFallbackErr(msg)&&modelName===ASKAI_MODEL){ASKAI.streamText="";break;}
+        if(askAiFallbackErr(msg)&&modelName===ASKAI_MODEL){ASKAI.preferFallback=true;ASKAI.streamText="";break;}
         if(!askAiTransient(msg))throw e;
         ASKAI.streamText="";}
     }
