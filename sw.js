@@ -1,4 +1,4 @@
-const CACHE = "civics128-v35";
+const CACHE = "civics128-v36";
 const AUDIO_CACHE = "civics128-audio-v1"; // filled only when the user taps "Download audio for offline"
 const ASSETS = ["./", "index.html", "manifest.webmanifest", "icon-192.png", "icon-512.png", "apple-touch-icon.png", "audio/audio.json", "audio/clips.json"];
 self.addEventListener("install", e => {
@@ -27,34 +27,11 @@ self.addEventListener("fetch", e => {
   const req = e.request;
   const url = new URL(req.url);
   if (req.method !== "GET" || url.origin !== location.origin) return;
-  if (url.pathname.includes("/audio/clips/") && url.pathname.endsWith(".mp3")) {
-    // Short voice clips (a few KB each): cache on first play so they also work offline later.
-    const key = url.origin + url.pathname;
-    e.respondWith(caches.open(AUDIO_CACHE).then(c => c.match(key).then(hit => {
-      if (hit) return ranged(hit, req);
-      return fetch(key).then(res => {
-        if (res.ok && res.status === 200) { c.put(key, res.clone()); return ranged(res, req); }
-        if (res.status === 206) return res;
-        return res;
-      });
-    })));
-    return;
-  }
-  if (url.pathname.endsWith(".mp3")) {
-    // MP3s are NOT cached automatically: use the offline copy if the user downloaded it, else go to the network.
-    // Always honor Range (Safari asks for ranges). A 200 full-body response to a range request
-    // can make iOS treat the first slice as the whole file and stop after one track.
-    e.respondWith((async () => {
-      const c = await caches.open(AUDIO_CACHE);
-      const hit = await c.match(url.origin + url.pathname);
-      if (hit) return ranged(hit, req);
-      const res = await fetch(req);
-      if (res.status === 206) return res;
-      if (res.ok) return ranged(res, req);
-      return res;
-    })());
-    return;
-  }
+  // Never intercept MP3s. Safari's <audio> sends Range requests; a service worker
+  // that handles them can make iOS stop after the first chapter or track. Offline
+  // copies are played by the page as blob: URLs from AUDIO_CACHE.
+  if (url.pathname.endsWith(".mp3")) return;
+
   if (url.pathname.endsWith("/audio/audio.json") || url.pathname.endsWith("/audio/clips.json")) {
     e.respondWith(fetch(req).then(res => { if (res.ok) { const copy = res.clone(); caches.open(CACHE).then(c => c.put(req, copy)); } return res; })
       .catch(() => caches.match(req, { ignoreSearch: true })));
