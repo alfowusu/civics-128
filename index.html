@@ -18,11 +18,11 @@
 <style>
 :root{--blue:#3b5bdb;--blue2:#5c7cfa;--red:#f03e3e;--green:#2f9e44;--gold:#f59f00;--purple:#7048e8;--teal:#0ca678;--bg:#f1f3ff;--card:#fff;--ink:#212529;--mute:#6c757d;--r:18px}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;scroll-padding-top:var(--nav-h,0px)}
 body{min-height:100vh;padding-bottom:env(safe-area-inset-bottom)}
 button{font:inherit;cursor:pointer;border:0;border-radius:14px}
 .wrap{max-width:680px;margin:0 auto;padding:12px 14px 40px}
-header{background:linear-gradient(135deg,var(--blue),var(--purple));color:#fff;padding:calc(14px + env(safe-area-inset-top)) 16px 16px;border-radius:0 0 26px 26px;box-shadow:0 6px 20px #3b5bdb44}
+header{position:sticky;top:0;z-index:50;isolation:isolate;transform:translateZ(0);-webkit-transform:translateZ(0);background-color:var(--blue);background-image:linear-gradient(135deg,var(--blue),var(--purple));color:#fff;padding:calc(14px + env(safe-area-inset-top)) 16px 16px;border-radius:0;box-shadow:0 6px 16px #3b5bdb66}
 header .top{display:flex;align-items:center;gap:10px;max-width:680px;margin:0 auto}
 header h1{font-size:1.2rem;margin:0;flex:1;line-height:1.2}
 header h1 small{display:block;font-weight:400;opacity:.85;font-size:.78rem}
@@ -72,7 +72,7 @@ h2{font-size:1.15rem;margin:18px 4px 10px}
 .btn:active{transform:scale(.97)}
 .btn.g{background:var(--green)}.btn.r{background:var(--red)}.btn.o{background:var(--gold)}.btn.ghost{background:#e7ebff;color:var(--blue)}
 .btn:disabled{filter:grayscale(1) opacity(.5)}
-.topline{display:flex;align-items:center;gap:8px;margin:12px 0 8px}
+.topline{display:flex;align-items:center;gap:8px;position:sticky;top:var(--hdr-h,0px);z-index:45;isolation:isolate;transform:translateZ(0);-webkit-transform:translateZ(0);background:var(--bg);margin:0 -14px 8px;padding:10px 14px 8px;box-shadow:0 10px 14px var(--bg),0 1px 0 var(--bg)}
 .topline .back{background:#fff;color:var(--ink);height:44px;padding:0 14px;box-shadow:0 1px 4px #0001}
 .topline .meta{flex:1;font-size:.85rem;color:var(--mute);text-align:right}
 .pill{display:inline-block;font-size:.72rem;font-weight:700;padding:3px 9px;border-radius:99px;background:#e7ebff;color:var(--blue);margin:0 4px 4px 0}
@@ -139,7 +139,7 @@ select{font:inherit;padding:8px;border-radius:10px;border:2px solid #dee2e6;min-
 .small{font-size:.85rem;color:var(--mute)}
 a{color:var(--blue)}
 .selfcheck{display:flex;gap:10px;margin-top:12px}
-.player{position:sticky;top:0;z-index:20;background:linear-gradient(135deg,#2b8a3e,#0ca678);color:#fff;border-radius:16px;padding:10px 12px;margin:8px 0 10px;box-shadow:0 6px 16px #0003}
+.player{position:sticky;top:var(--nav-h,0px);z-index:30;background:linear-gradient(135deg,#2b8a3e,#0ca678);color:#fff;border-radius:16px;padding:10px 12px;margin:8px 0 10px;box-shadow:0 6px 16px #0003}
 .plrow{gap:8px;flex-wrap:nowrap}
 .plb{background:#ffffff2e;color:#fff;min-width:48px;height:48px;font-size:1.25rem}
 .plb.big{min-width:64px;background:#fff;color:#2b8a3e}
@@ -180,6 +180,7 @@ a{color:var(--blue)}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 .view.is-review > :not(.topline):not(.score):not(#sessReview):not(#sessBar):not(#sessSheet){display:none!important}
 .sessbar{display:flex;gap:8px;align-items:stretch;margin:14px 0 8px;position:sticky;bottom:8px;z-index:6}
+.view.has-sessbar{padding-bottom:76px}
 .sessbar .btn{min-height:52px}
 .sessclock{background:#fff;color:var(--ink);min-width:52px;min-height:52px;padding:0 12px;font-size:1.15rem;box-shadow:0 1px 4px #0001;font-weight:800;display:inline-flex;align-items:center;justify-content:center;gap:4px;flex:none}
 .sessclock .n{font-size:.8rem}
@@ -237,7 +238,7 @@ header h1 small,.stat span{opacity:1}.stat{background:#ffffff14}
 .panel.soft{box-shadow:none;background:#f8f9fa}.panel.soft.yel,.fb.yel{background:#fff9db}.panel.soft.red{background:#fff5f5}
 /* ===== Night mode ===== */
 html[data-theme=dark]{color-scheme:dark;--blue:#4263eb;--blue2:#748ffc;--bg:#10131c;--card:#1b2030;--ink:#e9ecef;--mute:#aab2bd;--green:#237032;--red:#c92a2a}
-html[data-theme=dark] header{background:linear-gradient(135deg,#283a8f,#4b2a99);box-shadow:0 6px 20px #0008}
+html[data-theme=dark] header{background-color:#283a8f;background-image:linear-gradient(135deg,#283a8f,#4b2a99);box-shadow:0 6px 20px #0008}
 html[data-theme=dark] .chip{background:#232a3d;border-color:#3a4258;color:var(--ink)}
 html[data-theme=dark] .chip.on{background:#4263eb;border-color:#4263eb;color:#fff}
 html[data-theme=dark] .chip.star.on{background:#f59f00;border-color:#f59f00;color:#1b1b1b}
@@ -391,6 +392,47 @@ html[data-theme=dark] .syncbox{background:#1b2030;color:#e9ecef}
 .cloudpanel .cloudinput{width:100%;box-sizing:border-box;font-size:18px;padding:12px;border-radius:10px;border:1px solid #adb5bd;margin:8px 0}
 .cloudstatus{font-weight:600;margin:6px 0 10px}
 .cloudstatus.ok{color:#2b8a3e}.cloudstatus.warn{color:#c92a2a}
+
+/* ---- Ask AI ---- */
+.askai-btn{flex:none;min-height:44px;padding:8px 14px;font-size:.92rem;font-weight:600;background:#e7ebff;color:var(--blue);border-radius:14px}
+html[data-theme=dark] .askai-btn{background:#26304d;color:#bac8ff}
+.askai-row{margin-top:10px}
+.fb .askai-btn,.list .askai-btn,.ourans .askai-btn,.cqcard .askai-btn,.sessrev .askai-btn,.mm .askai-btn,.gqs .askai-btn,.recqs .askai-btn,.panel .askai-btn{margin-top:8px}
+.askai-modal{position:fixed;inset:0;background:#0008;z-index:90;display:flex;align-items:flex-end;justify-content:center;padding:0}
+.askai-modal[hidden]{display:none!important}
+.askai-sheet{background:var(--card);color:var(--ink);border-radius:22px 22px 0 0;width:100%;max-width:680px;max-height:90vh;display:flex;flex-direction:column;padding:10px 14px calc(12px + env(safe-area-inset-bottom));box-shadow:0 -12px 40px #0005}
+.askai-head{display:flex;align-items:center;gap:8px;padding:4px 0 8px}
+.askai-head h2{margin:0;flex:1;font-size:1.15rem}
+.askai-x{background:#e7ebff;color:var(--blue);min-width:44px;height:44px;font-size:1.1rem;border-radius:14px}
+.askai-body{overflow:auto;-webkit-overflow-scrolling:touch;flex:1;min-height:0;padding-bottom:8px}
+.askai-q{background:#e7ebff;border-radius:14px;padding:10px 12px;margin-bottom:8px}
+.askai-q b{display:block;font-size:.8rem;color:var(--blue);margin-bottom:2px}
+.askai-off{background:#f8f9fa;border-radius:14px;padding:10px 12px;margin-bottom:8px;font-size:.9rem}
+.askai-off b{display:block;font-size:.8rem;color:var(--mute);margin-bottom:2px}
+.askai-thread{display:flex;flex-direction:column;gap:8px;margin:10px 0}
+.askai-msg{display:flex;gap:6px;align-items:flex-end;max-width:100%}
+.askai-msg.me{justify-content:flex-end}
+.askai-msg.ai{justify-content:flex-start}
+.askai-bubble{border-radius:16px;padding:10px 12px;max-width:86%;font-size:.95rem;line-height:1.4}
+.askai-msg.me .askai-bubble{background:var(--blue);color:#fff;border-bottom-right-radius:6px}
+.askai-msg.ai .askai-bubble{background:#eef2ff;color:var(--ink);border-bottom-left-radius:6px}
+.askai-bubble.thinking{font-style:italic;color:var(--mute)}
+.askai-speak{flex:none;margin-bottom:2px}
+.askai-chips{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
+.askai-chips .chip{background:#fff;border:2px solid #d0d7f5}
+.askai-err,.askai-offnote{background:#fff4e6;border:2px solid #ffd8a8;border-radius:12px;padding:10px;margin:8px 0;font-size:.9rem}
+.askai-voice{font-size:.78rem;color:var(--mute);margin:4px 0 8px}
+.askai-form{display:flex;gap:8px;align-items:center}
+.askai-form .typein{flex:1;min-width:0;min-height:48px;font-size:1rem;padding:12px}
+.askai-form .btn{flex:none;min-height:48px;padding:10px 16px}
+html[data-theme=dark] .askai-x{background:#26304d;color:#bac8ff}
+html[data-theme=dark] .askai-q{background:#26304d}
+html[data-theme=dark] .askai-q b{color:#bac8ff}
+html[data-theme=dark] .askai-off{background:#121624}
+html[data-theme=dark] .askai-msg.ai .askai-bubble{background:#26304d;color:var(--ink)}
+html[data-theme=dark] .askai-chips .chip{background:#232a3d;border-color:#3a4258}
+html[data-theme=dark] .askai-err,html[data-theme=dark] .askai-offnote{background:#33240f;border-color:#a35d00;color:var(--ink)}
+html[data-theme=dark] .askai-sheet{box-shadow:0 -12px 40px #000a}
 
 </style>
 </head>
@@ -622,7 +664,7 @@ function togglePick(n,ans){const q=BYN[n];if(!q)return;const need=Math.max(1,Mat
   else if(need===1)cur=[ans];else if(cur.length>=need)cur=cur.slice(0,-1).concat([ans]);else cur=cur.concat([ans]);
   S.picks=S.picks||{};if(samePickSet(cur,suggestedPicks(q)))delete S.picks[n];else S.picks[n]=cur;save();refreshPickUI(n);}
 function resetToSuggestedPicks(){if(!confirm("Reset all starred answers back to the suggested picks?"))return;S.picks={};save();const on=document.querySelector(".view.on");const id=on?on.id.slice(2):"home";
-  if(id==="list")renderList();else if(id==="groups"&&typeof renderGroups==="function")renderGroups();else if(id==="flash"&&typeof fq!=="undefined"&&fq){const q=fq;$("#fBack").innerHTML=`<div class="qnum">Question ${q.n} · answer${q.a.length>1?"s":""}</div><div class="small" style="margin:4px 0 6px">${esc(q.q)}</div><div class="ans">${q.vary&&mineVal(q.n)?`${savedLine(q,"Your answer")}`:""}${ansList(q)}</div>${mineBox(q)}${tipHTML(q)}<div class="hint">Tap to flip back</div>`;}
+  if(id==="list")renderList();else if(id==="groups"&&typeof renderGroups==="function")renderGroups();else if(id==="flash"&&typeof fq!=="undefined"&&fq){const q=fq;$("#fBack").innerHTML=`<div class="qnum">Question ${q.n} · answer${q.a.length>1?"s":""}</div><div class="small" style="margin:4px 0 6px">${esc(q.q)}</div><div class="ans">${q.vary&&mineVal(q.n)?`${savedLine(q,"Your answer")}`:""}${ansList(q)}</div>${mineBox(q)}${tipHTML(q)}${typeof askAiBtn==="function"?`<div class="row askai-row">${askAiBtn("c",q.n)}</div>`:""}<div class="hint">Tap to flip back</div>`;}
   else if(id==="report"&&typeof renderReport==="function")renderReport();else go(id==="home"?"home":id);}
 function mineBox(q){if(!q.vary)return"";const v=mineVal(q.n);const isDef=mineIsDefault(q.n);return `<div class="mine-box" onclick="event.stopPropagation()"><label>✏️ Answers vary — look up yours (${esc(q.vary.look)})</label><input data-mine="${q.n}" value="${esc(v)}" placeholder="Type your answer…" autocomplete="off"><div class="saved"></div><div class="note mine-note" ${isDef?"":"hidden"}>📍 ${esc(LOCAL_NOTE)}</div>${DEFAULT_MINE[q.n]?`<button class="link mine-reset" data-mreset="${q.n}" onclick="resetMine(${q.n})" ${isDef?"hidden":""}>↺ Use the Athens, OH answer (${esc(DEFAULT_MINE[q.n])})</button>`:""}</div>`;}
 function resetMine(n){delete S.mine[n];save();document.querySelectorAll(`[data-mine="${n}"]`).forEach(i=>{i.value=DEFAULT_MINE[n];const box=i.closest(".mine-box");box.querySelector(".mine-note").hidden=false;box.querySelector(".mine-reset").hidden=true;});updateHome();}
@@ -878,19 +920,21 @@ const CIVIC_VIEWS=["home","flash","quiz","review","mock","list","mine","speak","
 const MARRY_VIEWS=["marriage","couplecats","couplequiz","coupledocs","coupletips","couplechanges","couplesources","couplenotice"];
 function rememberSection(v){if(CIVIC_VIEWS.includes(v)&&S.section!=="civics"){S.section="civics";save();}if(MARRY_VIEWS.includes(v)&&S.section!=="marriage"){S.section="marriage";save();}}
 function openSection(sec){S.section=sec==="marriage"?"marriage":"civics";save();go(S.section==="marriage"?"marriage":"home");}
+function syncStickyOffsets(){const h=document.querySelector("header");const on=document.querySelector(".view.on");const t=on&&on.querySelector(":scope > .topline");const hh=h?Math.round(h.getBoundingClientRect().height):0;const th=t?Math.round(t.getBoundingClientRect().height):0;const r=document.documentElement;r.style.setProperty("--hdr-h",hh+"px");r.style.setProperty("--nav-h",(hh+th)+"px");}
 function syncChrome(){document.documentElement.removeAttribute("data-start");const on=document.querySelector(".view.on");const id=on?on.id.slice(2):"choose";
   const marry=MARRY_VIEWS.includes(id),choose=id==="choose";const header=document.querySelector("header");if(header)header.classList.toggle("hide-civics-stats",choose||marry);
-  const h1=$("header h1");if(!h1)return;
-  if(choose)h1.innerHTML=`🇺🇸 Interview prep<small>Civics test and couple interview</small>`;
+  const h1=$("header h1");
+  if(h1){if(choose)h1.innerHTML=`🇺🇸 Interview prep<small>Civics test and couple interview</small>`;
   else if(marry)h1.innerHTML=`💑 Couple interview<small>Marriage questions, documents, and tips</small>`;
   else h1.innerHTML=`🇺🇸 Civics 128<small>U.S. citizenship test practice · 2025 version</small>`;}
+  syncStickyOffsets();requestAnimationFrame(syncStickyOffsets);}
 function go(v){stopTimer();if(typeof plStop==="function"&&PL.playing)plStop();if(typeof stopListen==="function")stopListen();if(typeof stopSpeech==="function")stopSpeech();else if(canSpeak)try{speechSynthesis.cancel();}catch(e){}A=null;document.querySelectorAll(".view").forEach(x=>x.classList.remove("on"));
   if(v==="flash")startFlash();else if(v==="quiz")startQuiz(false);else if(v==="review")startQuiz(true);else if(v==="mock")mockIntro();else if(v==="list")renderList();else if(v==="mine")renderMine();else if(typeof EXTGO!=="undefined"&&EXTGO[v])EXTGO[v]();else{v="home";updateHome();chips();}
   rememberSection(v);const node=$("#v-"+(v==="review"?"quiz":v));if(node)node.classList.add("on");scrollTo(0,0);location.hash=v==="home"?"":v;syncChrome();if(!SESS_WANT_RESTORE&&typeof sessExitReview==="function")sessExitReview(true);if(typeof sessSyncNav==="function")sessSyncNav();}
 document.addEventListener("click",e=>{const b=e.target.closest("[data-go]");if(!b)return;go(b.dataset.go);if(b.dataset.go==="list"){if(e.target.closest("[data-playall]"))mainPlay();else if(e.target.closest("[data-restart]"))mainRestart();}});
 $("#homeBtn").onclick=()=>{const on=document.querySelector(".view.on");const id=on?on.id.slice(2):"choose";if(id==="home"||id==="marriage"||id==="choose")go("choose");else if(MARRY_VIEWS.includes(id))go("marriage");else go("home");};
 $("#resetBtn").onclick=()=>{if(confirm("Reset all progress (your local answers are kept)?")){const mine=S.mine,picks=S.picks||{},section=S.section,couple=S.couple||{},coupleDocs=S.coupleDocs||{},coupleReview=S.coupleReview||[],notice=S.notice||{};S=blank();S.mine=mine;S.picks=picks;S.section=section;S.couple=couple;S.coupleDocs=coupleDocs;S.coupleReview=coupleReview;S.notice=notice;save();refreshStats();go(section==="marriage"?"marriage":"home");}};
-document.addEventListener("pointerdown",e=>{if(e.target.closest("[data-pick],[data-reset-picks],[data-read-q],[data-read-fb],[data-read-couple],[data-read-tip],[data-read-note],[data-read-text],[data-read-doc],[data-read-notice]"))e.stopPropagation();},true);
+document.addEventListener("pointerdown",e=>{if(e.target.closest("[data-pick],[data-reset-picks],[data-read-q],[data-read-fb],[data-read-couple],[data-read-tip],[data-read-note],[data-read-text],[data-read-doc],[data-read-notice],[data-ask-ai],[data-ask-speak],[data-ask-chip]"))e.stopPropagation();},true);
 document.addEventListener("click",e=>{
   if(!canAutoRead())return;
   if(e.target.closest("[data-read-q],[data-read-fb],[data-read-couple],[data-read-tip],[data-read-note],[data-read-text],[data-read-doc],[data-read-notice],[data-pick],button,a,input,textarea,label,summary"))return;
@@ -949,8 +993,8 @@ function sessBarEl(){let el=$("#sessBar");if(!el){el=document.createElement("div
   return el;}
 function sessGameViews(){return["v-flash","v-quiz","v-mock","v-speak","v-couplequiz"];}
 function sessSyncNav(){const v=document.querySelector(".view.on");const el=sessBarEl();
-  if(!v||!sessGameViews().includes(v.id)||!SESS||!SESS.mode){el.hidden=true;const sh=$("#sessSheet");if(sh)sh.hidden=true;return;}
-  if(el.parentNode!==v)v.appendChild(el);el.hidden=false;
+  if(!v||!sessGameViews().includes(v.id)||!SESS||!SESS.mode){el.hidden=true;document.querySelectorAll(".has-sessbar").forEach(x=>x.classList.remove("has-sessbar"));const sh=$("#sessSheet");if(sh)sh.hidden=true;return;}
+  if(el.parentNode!==v)v.appendChild(el);el.hidden=false;v.classList.add("has-sessbar");
   const n=(SESS.items||[]).length,at=SESS.at,review=at!=null;
   const prev=$("#sessPrevBtn"),next=$("#sessNextBtn"),cnt=$("#sessCount");
   if(cnt)cnt.textContent=String(n);
@@ -979,12 +1023,12 @@ function sessYouHTML(it){if(it.said)return "<p>You "+(it.how==="said"?"said":it.
 function sessReviewHTML(it,i){const n=SESS.items.length;
   if(it.id){const q=typeof coupleFind==="function"?coupleFind(it.id):null;if(!q)return"<p>Question not found.</p>";
     const rec=typeof coupleGet==="function"?coupleGet(q.id):null;
-    return "<div class=\"qcard sessrev\">"+(typeof readThisBtn==="function"?readThisBtn("data-read-couple=\""+q.id+"\""):"")+"<div class=\"qnum\">"+(q.catTitle||"Marriage")+" · this session</div><div class=\"qtext\">"+esc(q.q)+"</div>"+(q.hint?"<div class=\"tip\">💡 "+esc(q.hint)+"</div>":"")+(rec&&rec.answer?"<p><b>Our answer:</b> "+esc(rec.answer)+"</p>":"")+"<p class=\"sessnote\">Review only.</p></div>";}
+    return "<div class=\"qcard sessrev\">"+(typeof readThisBtn==="function"?readThisBtn("data-read-couple=\""+q.id+"\""):"")+"<div class=\"qnum\">"+(q.catTitle||"Marriage")+" · this session</div><div class=\"qtext\">"+esc(q.q)+"</div>"+(q.hint?"<div class=\"tip\">💡 "+esc(q.hint)+"</div>":"")+(rec&&rec.answer?"<p><b>Our answer:</b> "+esc(rec.answer)+"</p>":"")+(typeof askAiBtn==="function"?askAiBtn("m",q.id):"")+"<p class=\"sessnote\">Review only.</p></div>";}
   const q=BYN[it.n];if(!q)return"<p>Question not found.</p>";
   const ok=it.ok,title=it.timeout?"⏰ Time’s up!":it.how==="skipped"?"Here’s the answer 📘":it.how==="flash-yes"?"✅ Got it":it.how==="flash-no"?"😅 Still learning":ok?"Correct ✅":"Not quite ❌";
   return "<div class=\"qcard sessrev\" data-sess-n=\""+q.n+"\">"+speakBtn(q)+"<div class=\"qnum\">Question "+q.n+" · this session ("+(i+1)+" of "+n+")</div><div>"+pills(q)+"</div><div class=\"qtext\">"+esc(q.q)+"</div>"
     +sessYouHTML(it)
-    +"<div class=\"fb "+(ok?"ok":"no")+"\"><h3>"+title+"</h3><b>Correct answers:</b>"+(q.vary&&mineVal(q.n)?savedLine(q,"Your saved answer"):"")+ansList(q)+tipHTML(q)+readThisBtn("data-read-fb=\""+q.n+"\"","Read the answer")+"</div>"
+    +"<div class=\"fb "+(ok?"ok":"no")+"\"><h3>"+title+"</h3><b>Correct answers:</b>"+(q.vary&&mineVal(q.n)?savedLine(q,"Your saved answer"):"")+ansList(q)+tipHTML(q)+readThisBtn("data-read-fb=\""+q.n+"\"","Read the answer")+(typeof askAiBtn==="function"?askAiBtn("c",q.n):"")+"</div>"
     +"<p class=\"sessnote\">Review only — this doesn’t change your score, streak, or points.</p></div>";}
 function sessShow(i){if(!SESS.items||!SESS.items[i])return;
   if(SESS.mode==="couple"){if(CQ){CQ.i=i;renderCoupleQuiz();SESS.at=null;sessSave();sessSyncNav();}return;}
@@ -1024,8 +1068,8 @@ function sessApply(st){const g=st.game||{},mode=st.mode;
   try{
     if(mode==="flash"){fList=(g.list||[]).map(n=>BYN[n]).filter(Boolean);if(!fList.length)return false;fq=BYN[g.fq]||fList[0];
       const q=fq;$("#fMeta").textContent=filterLabel()+" · "+fList.filter(x=>mastered(x.n)).length+"/"+fList.length+" mastered";
-      $("#fFront").innerHTML=speakBtn(q)+"<div class=\"qnum\">Question "+q.n+"</div><div>"+pills(q)+"</div><div class=\"qtext\">"+esc(q.q)+"</div><div class=\"hint\">👆 Tap to see the answer</div>";
-      $("#fBack").innerHTML=readThisBtn("data-read-fb=\""+q.n+"\"","Read the answer")+"<div class=\"qnum\">Question "+q.n+" · answer"+(q.a.length>1?"s":"")+"</div><div class=\"small\" style=\"margin:4px 0 6px\">"+esc(q.q)+"</div><div class=\"ans\">"+(q.vary&&mineVal(q.n)?savedLine(q,"Your answer"):"")+ansList(q)+"</div>"+mineBox(q)+tipHTML(q)+"<div class=\"hint\">Tap to flip back</div>";
+      $("#fFront").innerHTML=speakBtn(q)+"<div class=\"qnum\">Question "+q.n+"</div><div>"+pills(q)+"</div><div class=\"qtext\">"+esc(q.q)+"</div>"+(typeof askAiBtn==="function"?'<div class="row askai-row">'+askAiBtn("c",q.n)+"</div>":"")+"<div class=\"hint\">👆 Tap to see the answer</div>";
+      $("#fBack").innerHTML=readThisBtn("data-read-fb=\""+q.n+"\"","Read the answer")+"<div class=\"qnum\">Question "+q.n+" · answer"+(q.a.length>1?"s":"")+"</div><div class=\"small\" style=\"margin:4px 0 6px\">"+esc(q.q)+"</div><div class=\"ans\">"+(q.vary&&mineVal(q.n)?savedLine(q,"Your answer"):"")+ansList(q)+"</div>"+mineBox(q)+tipHTML(q)+""+(typeof askAiBtn==="function"?'<div class="row askai-row">'+askAiBtn("c",q.n)+"</div>":"")+"<div class=\"hint\">Tap to flip back</div>";
       if(g.flipped)$("#fc").classList.add("flipped");else $("#fc").classList.remove("flipped");return true;}
     if(mode==="quiz"||mode==="review"||mode==="final"){Q={list:(g.list||[]).map(n=>BYN[n]).filter(Boolean),cur:g.cur?BYN[g.cur]:null,right:g.right||0,wrong:g.wrong||0,run:g.run||0,review:!!g.review,seq:!!g.seq,si:g.si||0,label:g.label||""};
       if(g.input)S.input=g.input;$("#timerOn").checked=S.timer;$("#timerSec").value=String(S.timerSec);$("#timerBar").hidden=!S.timer;$("#qModes").innerHTML=modeChips();$("#srWarn").hidden=!(S.input==="speak"&&!SR);setAuto(S.auto);updQuizScore();
@@ -1047,15 +1091,15 @@ function startFlash(){if(typeof sessTryRestore==="function"&&sessTryRestore("fla
 function nextFlash(){if(typeof stopSpeech==="function")stopSpeech();const fc=$("#fc");fc.classList.remove("flipped");fq=nextQ(fList);const q=fq;
   $("#fMeta").textContent=`${filterLabel()} · ${fList.filter(x=>mastered(x.n)).length}/${fList.length} mastered`;
   setTimeout(()=>{
-  $("#fFront").innerHTML=`${speakBtn(q)}<div class="qnum">Question ${q.n}</div><div>${pills(q)}</div><div class="qtext">${esc(q.q)}</div><div class="hint">👆 Tap to see the answer</div>`;
-  $("#fBack").innerHTML=`${readThisBtn('data-read-fb="'+q.n+'"','Read the answer')}<div class="qnum">Question ${q.n} · answer${q.a.length>1?"s":""}</div><div class="small" style="margin:4px 0 6px">${esc(q.q)}</div><div class="ans">${q.vary&&mineVal(q.n)?`${savedLine(q,"Your answer")}`:""}${ansList(q)}</div>${mineBox(q)}${tipHTML(q)}<div class="hint">Tap to flip back</div>`;},150);
+  $("#fFront").innerHTML=`${speakBtn(q)}<div class="qnum">Question ${q.n}</div><div>${pills(q)}</div><div class="qtext">${esc(q.q)}</div>${typeof askAiBtn==="function"?`<div class="row askai-row">${askAiBtn("c",q.n)}</div>`:""}<div class="hint">👆 Tap to see the answer</div>`;
+  $("#fBack").innerHTML=`${readThisBtn('data-read-fb="'+q.n+'"','Read the answer')}<div class="qnum">Question ${q.n} · answer${q.a.length>1?"s":""}</div><div class="small" style="margin:4px 0 6px">${esc(q.q)}</div><div class="ans">${q.vary&&mineVal(q.n)?`${savedLine(q,"Your answer")}`:""}${ansList(q)}</div>${mineBox(q)}${tipHTML(q)}${typeof askAiBtn==="function"?`<div class="row askai-row">${askAiBtn("c",q.n)}</div>`:""}<div class="hint">Tap to flip back</div>`;},150);
   autoSay(q);if(typeof sessSave==="function")sessSave();if(typeof sessSyncNav==="function")sessSyncNav();}
 function flipFlash(){const on=$("#fc").classList.toggle("flipped");if(on&&fq)autoReadFlashBack(fq);else if(!on&&fq)autoReadQuestion(fq);}
-$("#fc").onclick=e=>{if(e.target.closest("input,button,a,label,textarea,.ansbox,.pickul,.pickbtn,.mine-box,.picktip,[data-pick],[data-read-q],[data-read-fb]"))return;flipFlash();};
+$("#fc").onclick=e=>{if(e.target.closest("input,button,a,label,textarea,.ansbox,.pickul,.pickbtn,.mine-box,.picktip,[data-pick],[data-read-q],[data-read-fb],[data-ask-ai]"))return;flipFlash();};
 function flashAnswer(ok){if(!fq||(typeof sessInReview==="function"&&sessInReview()))return;if(typeof sessPush==="function")sessPush({n:fq.n,ok,how:ok?"flash-yes":"flash-no"});record(fq.n,ok,{el:$("#fYes")});if(ok){buzz(20);}else buzz([30,40,30]);nextFlash();}
 $("#fYes").onclick=()=>flashAnswer(true);$("#fNo").onclick=()=>flashAnswer(false);
 (function(){const el=$("#fc");if(!el)return;let x0=0,y0=0,armed=false;
-  el.addEventListener("touchstart",e=>{if(e.touches.length!==1)return;if(e.target.closest("input,button,a,label,textarea,.ansbox,.pickul,.pickbtn,.mine-box,.picktip,[data-pick]"))return;x0=e.touches[0].clientX;y0=e.touches[0].clientY;armed=true;},{passive:true});
+  el.addEventListener("touchstart",e=>{if(e.touches.length!==1)return;if(e.target.closest("input,button,a,label,textarea,.ansbox,.pickul,.pickbtn,.mine-box,.picktip,[data-pick],[data-ask-ai]"))return;x0=e.touches[0].clientX;y0=e.touches[0].clientY;armed=true;},{passive:true});
   el.addEventListener("touchend",e=>{if(!armed)return;armed=false;const t=e.changedTouches[0];const dx=t.clientX-x0,dy=t.clientY-y0;if(Math.abs(dx)<56||Math.abs(dx)<Math.abs(dy)*1.4)return;
     if(dx>0){if(typeof sessBack==="function")sessBack();}else if(typeof sessInReview==="function"&&sessInReview()&&typeof sessForward==="function")sessForward();});
 })();
@@ -1214,6 +1258,7 @@ function showFb(box,q,ok,info){const title=info.timeout?"⏰ Time’s up!":info.
   if(!info.self){h+=`<b>All accepted answers:</b>${q.vary&&mineVal(q.n)?`${savedLine(q,"Your saved answer")}`:""}${ansList(q,info.hi)}`;}
   if(!info.noTip)h+=tipHTML(q);
   h+=readThisBtn('data-read-fb="'+q.n+'"','Read the answer');
+  if(typeof askAiBtn==="function")h+=askAiBtn("c",q.n);
   box.innerHTML=h+`</div>`;
   autoReadFeedback(q,ok,info);}
 
@@ -1278,7 +1323,7 @@ function renderMockResult(saveRes){if(!M)return;const pass=M.right>=M.passAt;con
   $("#mockArea").innerHTML=`${mockDots()}<div class="qcard result"><div class="big">${pass?"🏆":"📚"}</div><h2>${pass?"You passed!":"Not yet. Keep going!"}</h2>
   <p style="text-align:center;font-size:1.1rem"><b>${M.right}</b> correct out of <b>${asked}</b> asked (needed ${M.passAt}).${pass?" +50 bonus points ⭐":""}</p>
   <p class="small" style="text-align:center">${pass?(asked<M.max?`The officer stopped after ${asked} questions because you reached ${M.passAt} correct.`:""):`The test stopped because you can no longer reach ${M.passAt} correct.`}</p>
-  ${missed.length?`<h3>Questions to review</h3>${missed.map(q=>`<div class="panel soft red"><b>${q.n}. ${esc(q.q)}</b>${ansList(q)}</div>`).join("")}`:""}
+  ${missed.length?`<h3>Questions to review</h3>${missed.map(q=>`<div class="panel soft red"><b>${q.n}. ${esc(q.q)}</b>${ansList(q)}${typeof askAiBtn==="function"?askAiBtn("c",q.n):""}</div>`).join("")}`:""}
   <div class="row"><button class="btn" id="mAgain">Try again</button>${missed.length?`<button class="btn r" data-go="review">Review misses</button>`:""}</div></div>`;
   $("#mAgain").onclick=()=>startMock(M.senior);
   if(saveRes&&pass){confetti(220);setTimeout(()=>confetti(160),500);if(S.auto)say("Congratulations! You passed.");}if(typeof sessSyncNav==="function")sessSyncNav();}
@@ -1286,7 +1331,7 @@ function renderMockResult(saveRes){if(!M)return;const pass=M.right>=M.passAt;con
 // ---------- study list ----------
 function renderList(){const L=pool();$("#lMeta").textContent=`${filterLabel()} · ${L.length} questions`;let cat="";
   $("#listArea").innerHTML=L.map(q=>{const p=S.p[q.n];const col=!p||!p.seen?"#dee2e6":p.miss?"#ff8787":p.box>=MASTER_BOX?"#51cf66":"#ffd43b";const h=q.category!==cat?`<h2>${esc(q.section)} · ${esc(CAT_SHORT[q.category]||q.category)}</h2>`:"";cat=q.category;
-    return `${h}<details data-n="${q.n}"><summary><span class="lvl" style="background:${col}"></span>${q.n}. ${esc(q.q)} ${q.star?"<span class='pill star'>★</span>":""}${q.vary?"<span class='pill vary'>varies</span>":""}${p&&p.seen?"":"<span class='pill new'>🆕 not seen yet</span>"}</summary><div class="ans">${q.vary&&mineVal(q.n)?`${savedLine(q,"Your answer")}`:""}${ansList(q)}</div>${mineBox(q)}${pickTipHTML(q)}${q.tip?`<button class="link tipbtn" aria-expanded="false" onclick="const t=this.nextElementSibling;t.hidden=!t.hidden;this.setAttribute('aria-expanded',!t.hidden)">💡 Tip</button><div class="tip" hidden>${esc(q.tip)}</div>`:""}${canSpeak||AUDIO_BASE?`<div class="row" style="margin-top:8px">${readThisBtn('data-read-q="'+q.n+'"','Read this question')} <button class="btn ghost" data-playfrom="${q.n}">▶ Play from here (lock-screen audio)</button></div>`:""}</details>`;}).join("");
+    return `${h}<details data-n="${q.n}"><summary><span class="lvl" style="background:${col}"></span>${q.n}. ${esc(q.q)} ${q.star?"<span class='pill star'>★</span>":""}${q.vary?"<span class='pill vary'>varies</span>":""}${p&&p.seen?"":"<span class='pill new'>🆕 not seen yet</span>"}</summary><div class="ans">${q.vary&&mineVal(q.n)?`${savedLine(q,"Your answer")}`:""}${ansList(q)}</div>${mineBox(q)}${pickTipHTML(q)}${q.tip?`<button class="link tipbtn" aria-expanded="false" onclick="const t=this.nextElementSibling;t.hidden=!t.hidden;this.setAttribute('aria-expanded',!t.hidden)">💡 Tip</button><div class="tip" hidden>${esc(q.tip)}</div>`:""}<div class="row" style="margin-top:8px">${canSpeak||AUDIO_BASE?`${readThisBtn('data-read-q="'+q.n+'"','Read this question')} <button class="btn ghost" data-playfrom="${q.n}">▶ Play from here (lock-screen audio)</button>`:""}${typeof askAiBtn==="function"?askAiBtn("c",q.n):""}</div></details>`;}).join("");
   $("#plHost").innerHTML=AUDIO_BASE?`<details class="plfb" id="plFb"${AU.failed?" open":""}><summary>🗣 Or read with this device’s voice instead (no download; stops when the screen locks)</summary>${plBar()}</details>`:plBar();plWire();auWire();auInit();
   $("#heroPlay").onclick=mainToggle;$("#heroRestart").onclick=mainRestart;plStop();plBuild();plUI();const pq=PL.list[PL.idx];if(pq&&plOpts().pos){$("#plStatus").textContent=`Resume from Question ${pq.n} (${PL.idx+1}/${PL.list.length}) — press ▶`;}}
 // ---------- Study list: continuous "Play all" read-aloud ----------
@@ -1482,7 +1527,7 @@ function auWire(){const a=aud();if(!a||a._wired)return;a._wired=true;
   $("#aDl").onclick=auDownload;$("#aDel").onclick=auRemove;
   $("#aRates").onclick=e=>{const b=e.target.closest("[data-arate]");if(!b)return;auOpts().rate=+b.dataset.arate;save();a.playbackRate=auOpts().rate;document.querySelectorAll("[data-arate]").forEach(x=>x.classList.toggle("on",x===b));auPos();};}
 
-function renderMine(){$("#mineArea").innerHTML=Object.keys(VARY).map(n=>{const q=BYN[n];return `<div class="panel">${readThisBtn('data-read-q="'+n+'"','Read this question')}<div class="qnum">Question ${n}</div><b>${esc(q.q)}</b><div class="note">USCIS: ${esc(q.a.join(" "))}</div>${mineBox(q)}</div>`;}).join("");}
+function renderMine(){$("#mineArea").innerHTML=Object.keys(VARY).map(n=>{const q=BYN[n];return `<div class="panel">${readThisBtn('data-read-q="'+n+'"','Read this question')}<div class="qnum">Question ${n}</div><b>${esc(q.q)}</b><div class="note">USCIS: ${esc(q.a.join(" "))}</div>${mineBox(q)}${typeof askAiBtn==="function"?askAiBtn("c",n):""}</div>`;}).join("");}
 
 // ================= Interview practice: speaking + weak-spot report (extension) =================
 const CLIP_BASE=AUDIO_BASE?AUDIO_BASE+"clips/":null;
@@ -1643,11 +1688,11 @@ function renderReport(){const cs=catStats();let R=0,W=0;cs.forEach(c=>{R+=c.r;W+
   const missed=DATA.filter(q=>S.p[q.n]&&S.p[q.n].wrong).sort((a,b)=>S.p[b.n].wrong-S.p[a.n].wrong||(S.p[a.n].right/(S.p[a.n].seen||1))-(S.p[b.n].right/(S.p[b.n].seen||1))).slice(0,10);
   const rec=recommend();const spk=S.speakRes||[];const sp=spk.slice(-1)[0];const spReal=spk.filter(r=>r.pass!=null);
   $("#repArea").innerHTML=`<div class="panel"><div class="tiles"><div class="tile"><b>${R+W}</b>civics answers</div><div class="tile"><b>${R+W?Math.round(100*R/(R+W))+"%":"–"}</b>accuracy</div><div class="tile"><b>${m}/128</b>mastered</div><div class="tile"><b>${mocks?(mocks.pass?"✅ ":"❌ ")+mocks.right+"/"+mocks.asked:"–"}</b>last mock interview</div></div></div>
-  <div class="panel"><h3 style="margin-top:0">🎯 Recommended next</h3>${rec.length?`<p class="small">${rec.length} questions picked from your misses, low-accuracy questions, and your weakest topic. Star an answer to use it everywhere.</p><ol class="small recqs" style="padding-left:22px">${rec.map(n=>`<li>${typeof readThisBtn==="function"?readThisBtn('data-read-q="'+n+'"'):""}<div>${n}. ${esc(BYN[n].q)}${typeof pickLine==="function"?pickLine(BYN[n]):""}</div>${typeof ansList==="function"?ansList(BYN[n]):""}</li>`).join("")}</ol><button class="btn g" id="repGo" style="width:100%">▶ Practice these</button>`:"<p class=small>Nothing to recommend yet.</p>"}
+  <div class="panel"><h3 style="margin-top:0">🎯 Recommended next</h3>${rec.length?`<p class="small">${rec.length} questions picked from your misses, low-accuracy questions, and your weakest topic. Star an answer to use it everywhere.</p><ol class="small recqs" style="padding-left:22px">${rec.map(n=>`<li>${typeof readThisBtn==="function"?readThisBtn('data-read-q="'+n+'"'):""}<div>${n}. ${esc(BYN[n].q)}${typeof pickLine==="function"?pickLine(BYN[n]):""}</div>${typeof ansList==="function"?ansList(BYN[n]):""}${typeof askAiBtn==="function"?askAiBtn("c",n):""}</li>`).join("")}</ol><button class="btn g" id="repGo" style="width:100%">▶ Practice these</button>`:"<p class=small>Nothing to recommend yet.</p>"}
 </div>
   ${coverageHTML(cs)}
   <div class="panel"><h3 style="margin-top:0">📈 Last 30 days</h3>${chartSVG()}</div>
-  <div class="panel"><h3 style="margin-top:0">❗ Most missed</h3>${missed.length?missed.map(q=>`<div class="mm">${typeof readThisBtn==="function"?readThisBtn('data-read-q="'+q.n+'"'):""}<span class="c">✗${S.p[q.n].wrong} ✓${S.p[q.n].right}</span><div><div>${q.n}. ${esc(q.q)}${typeof pickLine==="function"?pickLine(q):""}</div>${typeof ansList==="function"?ansList(q):""}</div></div>`).join(""):"<p class=small>No misses yet.</p>"}</div>
+  <div class="panel"><h3 style="margin-top:0">❗ Most missed</h3>${missed.length?missed.map(q=>`<div class="mm">${typeof readThisBtn==="function"?readThisBtn('data-read-q="'+q.n+'"'):""}<span class="c">✗${S.p[q.n].wrong} ✓${S.p[q.n].right}</span><div><div>${q.n}. ${esc(q.q)}${typeof pickLine==="function"?pickLine(q):""}</div>${typeof ansList==="function"?ansList(q):""}${typeof askAiBtn==="function"?askAiBtn("c",q.n):""}</div></div>`).join(""):"<p class=small>No misses yet.</p>"}</div>
   <div class="panel"><h3 style="margin-top:0">🗣️ Speaking practice</h3>
    <p class="small">${sp?`Last session: ${sp.right}/${sp.asked} correct${sp.pass==null?" (practice)":sp.pass?" ✅ passed":" ❌ not yet"}. Real-test sessions: ${spReal.filter(r=>r.pass).length}/${spReal.length} passed.`:"No speaking sessions yet."}</p>${spk.length?`<p class="small">Recent: ${spk.slice(-5).reverse().map(r=>`${r.pass==null?"🗣️":r.pass?"✅":"❌"} ${r.right}/${r.asked}`).join(" · ")}</p>`:""}<button class="btn ghost" data-go="speak" style="width:100%">🗣️ Speaking practice</button></div>`;
   if($("#repGo"))$("#repGo").onclick=()=>startCustom(rec,"🎯 Recommended set");}
@@ -1659,7 +1704,7 @@ function renderGroups(){
     <button class="btn ghost" data-reset-picks style="width:100%">↺ Reset to suggested picks</button></div>
     ${list.map(g=>{const qs=g.qs.map(n=>BYN[n]).filter(Boolean);
       return `<details class="gcard" data-gid="${esc(g.id)}"><summary><b>${esc(g.answer)}</b> <span class="pill">${qs.length} question${qs.length===1?"":"s"}</span>${g.detail&&g.detail!==g.answer?`<div class="small">${esc(g.detail)}</div>`:""}</summary>
-        <ol class="gqs">${qs.map(q=>`<li>${typeof readThisBtn==="function"?readThisBtn('data-read-q="'+q.n+'"'):""}<b>Q${q.n}.</b> ${esc(q.q)}${typeof pickLine==="function"?pickLine(q):""}${typeof ansList==="function"?ansList(q):""}</li>`).join("")}</ol>
+        <ol class="gqs">${qs.map(q=>`<li>${typeof readThisBtn==="function"?readThisBtn('data-read-q="'+q.n+'"'):""}<b>Q${q.n}.</b> ${esc(q.q)}${typeof pickLine==="function"?pickLine(q):""}${typeof ansList==="function"?ansList(q):""}${typeof askAiBtn==="function"?askAiBtn("c",q.n):""}</li>`).join("")}</ol>
         <button class="btn g" data-practice-group="${esc(g.id)}" style="width:100%;margin-top:8px">▶ Practice this group</button></details>`;}).join("")}`;}
 document.addEventListener("click",e=>{const b=e.target.closest("[data-practice-group]");if(!b)return;const g=(GROUPS||[]).find(x=>x.id===b.dataset.practiceGroup);if(g)startCustom(g.qs,"🔗 "+g.answer,{seq:true});});
 
@@ -1692,6 +1737,7 @@ function coupleAnsBox(q){const rec=coupleGet(q.id);
     <label for="notes-${esc(q.id)}">Notes</label>
     <textarea id="notes-${esc(q.id)}" data-couple-notes="${esc(q.id)}" rows="2" placeholder="Extra details so you’re both 100% sure…">${esc(rec.notes||"")}</textarea>
     ${rec.notesAlt?spouseWroteHTML(rec.notesAlt,rec.notesAltKind):""}
+    ${typeof askAiBtn==="function"?askAiBtn("m",q.id):""}
   </div>`;}
 function linkList(src){return (src||[]).map(x=>`<a class="srclink" href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.title)}</a>`).join(" · ");}
 function renderChooser(){const el=$("#chooseArea");if(!el)return;
@@ -2142,6 +2188,154 @@ function cloudBoot(){cloudLoadCfg();if(!cloudAvailable())return;
   addEventListener("online",()=>cloudSyncNow("online"));addEventListener("pageshow",e=>{if(e.persisted)cloudSyncNow("resume");});
   CLOUD.ticker=setInterval(()=>{if(!CLOUD.on)return;cloudRenderStatus();if(document.visibilityState==="visible"&&Date.now()-CLOUD.lastOk>60000&&!CLOUD.busy)cloudSyncNow("tick");},30000);}
 
+// ---- ✨ Ask AI (Firebase AI Logic + Gemini Developer API). Chat stays on this phone only. ----
+const ASKAI_MODEL="gemini-3.5-flash-lite";
+const ASKAI_RPM=6;
+const ASKAI_WINDOW_MS=60000;
+const ASKAI_CHATS={}; // in-memory only; never written to S, civics128.v1, or the cloud payload
+let ASKAI={open:false,key:"",kind:"",ctx:null,sending:false,times:[],ai:null,busyMsg:""};
+function askAiBtn(kind,id){return `<button type="button" class="askai-btn" data-ask-ai="${kind}:${esc(String(id))}" aria-label="Ask AI about this question">✨ Ask AI</button>`;}
+function askAiAvailable(){return !!(typeof CLOUD_CFG!=="undefined"&&CLOUD_CFG&&CLOUD_CFG.apiKey);}
+function askAiOnline(){return typeof navigator==="undefined"||navigator.onLine!==false;}
+function askAiCivicsOfficial(q){if(!q)return"";const lines=(q.a||[]).map(a=>String(a).replace(/\s+/g," ").trim()).filter(Boolean);
+  let s="Official 2025 USCIS accepted answer"+(lines.length>1?"s":"")+":\n"+lines.map(a=>"- "+a).join("\n");
+  const need=q.need||1;if(need>1)s+="\nThe applicant must name at least "+need+" of these.";
+  if(q.vary)s+="\nThis question varies by where the applicant lives. They should give their own current local official, not a made-up name.";
+  try{const mine=typeof mineVal==="function"?mineVal(q.n):"";if(mine)s+="\nThe applicant's saved local answer: "+mine;}catch(e){}
+  return s;}
+function askAiCtx(kind,id){if(kind==="c"){const q=typeof BYN!=="undefined"?BYN[+id]:null;if(!q)return null;
+    return{kind:"c",id:String(q.n),title:"Question "+q.n,question:q.q,official:askAiCivicsOfficial(q),hint:(q.tip||""),saved:""};}
+  if(kind==="m"){const q=typeof coupleFind==="function"?coupleFind(id):null;if(!q)return null;
+    const rec=typeof coupleGet==="function"?coupleGet(q.id):null;
+    const saved=[rec&&rec.answer?("Our saved answer: "+rec.answer):"",rec&&rec.notes?("Our notes: "+rec.notes):""].filter(Boolean).join("\n");
+    return{kind:"m",id:q.id,title:q.catTitle||"Marriage question",question:q.q,official:"",hint:q.hint||"",saved:saved};}
+  return null;}
+function askAiSystem(ctx){if(ctx.kind==="c")return `You are a warm, encouraging study coach for the 2025 U.S. citizenship civics test (128 questions). The applicant is preparing for a USCIS interview.
+
+The question is: ${ctx.question}
+
+${ctx.official}
+
+Rules you must follow:
+- The official 2025 USCIS accepted answers above are what the applicant should say at the interview. Never contradict them, never replace them, and never invent extra "official" answers.
+- You may explain history, define words, tell the story behind the answer, and give memory tips. Keep the short official answer as the thing they should say to the officer.
+- If you are unsure of a fact, say so clearly. Do not guess at dates, names, or numbers.
+- Write in short, warm, plain English. A few short paragraphs at most. No bullet-wall or legal jargon.
+- Memory tips should be quirky, fun, and easy to remember — like a little joke or word play. Keep them respectful.
+- Do not discuss immigration case strategy, and do not claim to be USCIS.`;
+  return `You are a warm, encouraging practice coach for a USCIS combo interview: the marriage questions on the joint I-751 (removing conditions on residence) plus naturalization (N-400). Two spouses will attend together.
+
+The practice question is: ${ctx.question}
+${ctx.hint?("A study hint: "+ctx.hint):""}
+${ctx.saved?ctx.saved:"The couple has not saved an answer on this phone yet."}
+
+Rules you must follow:
+- Act as a practice coach. You may quiz the applicant like an officer and suggest how to phrase an honest answer.
+- Never invent facts about their life. If they have not told you something, ask them — do not make it up.
+- Never tell them to say anything untrue, or to invent matching details.
+- These practice prompts come from public interview recaps and official N-400 topics. They are study tools, not an official list and not legal advice. Say so if asked.
+- Write in short, warm, plain English. A few short paragraphs at most.
+- Memory tips should be quirky, fun, and easy to remember, and must be based only on what they actually told you.`;}
+function askAiChips(kind){return kind==="m"?[
+  ["Quiz me like an officer","Quiz me like an officer would. Ask one question at a time and wait for my answer."],
+  ["Help me phrase an honest answer","Help me phrase an honest answer to this question. Do not invent any facts I have not told you."],
+  ["What might they ask next?","What might the officer ask next about this topic?"],
+  ["Give me a memory tip","Give me a quirky, fun memory tip — only using facts I have actually told you."]
+]:[
+  ["Why is this the answer?","Why is this the answer?"],
+  ["Tell me the story behind it","Tell me the story behind it."],
+  ["Explain a word","Explain any hard words in this question or the official answer, in simple English."],
+  ["Give me a memory tip","Give me a quirky, fun memory tip so this answer sticks."]
+];}
+function askAiRateOk(){const now=Date.now();ASKAI.times=ASKAI.times.filter(t=>now-t<ASKAI_WINDOW_MS);return ASKAI.times.length<ASKAI_RPM;}
+function askAiRateWait(){const now=Date.now();const oldest=ASKAI.times[0]||now;const sec=Math.max(1,Math.ceil((ASKAI_WINDOW_MS-(now-oldest))/1000));return "Easy, let’s pause for about "+sec+" second"+(sec===1?"":"s")+" so we don’t use up the free daily questions too fast.";}
+async function askAiEnsure(){if(ASKAI.ai)return ASKAI.ai;
+  if(typeof CLOUD_CFG==="undefined"||!CLOUD_CFG||!CLOUD_CFG.apiKey)throw new Error("no-config");
+  const ver=(typeof FB_VER==="string"&&FB_VER)?FB_VER:"13.2.0";
+  const B="https://www.gstatic.com/firebasejs/"+ver+"/";
+  let appM,aiM,app;
+  if(typeof CLOUD!=="undefined"&&CLOUD.fb&&CLOUD.fb.app){appM=CLOUD.fb.appM;app=CLOUD.fb.app;}
+  else{appM=await import(B+"firebase-app.js");app=appM.getApps().length?appM.getApps()[0]:appM.initializeApp(CLOUD_CFG);}
+  aiM=await import(B+"firebase-ai.js");
+  const ai=aiM.getAI(app,{backend:new aiM.GoogleAIBackend()});
+  ASKAI.ai={app,aiM,ai};return ASKAI.ai;}
+function askAiPlain(s){return String(s||"").replace(/[*_`#]+/g," ").replace(/\s+\n/g,"\n").replace(/\n{3,}/g,"\n\n").replace(/[ \t]+/g," ").trim();}
+function askAiEsc(s){return esc(String(s||"")).replace(/\n/g,"<br>");}
+function askAiSession(key){if(!ASKAI_CHATS[key])ASKAI_CHATS[key]={msgs:[]};return ASKAI_CHATS[key];}
+function askAiOpen(spec){const i=String(spec||"").indexOf(":");if(i<0)return;const kind=spec.slice(0,i),id=spec.slice(i+1);
+  const ctx=askAiCtx(kind,id);if(!ctx)return;
+  ASKAI.open=true;ASKAI.key=kind+":"+ctx.id;ASKAI.kind=kind;ASKAI.ctx=ctx;
+  askAiRender();const t=$("#askaiInput");if(t&&askAiOnline())setTimeout(()=>{try{t.focus({preventScroll:true});}catch(e){}},200);}
+function askAiClose(){ASKAI.open=false;const m=$("#askaiModal");if(m)m.hidden=true;if(typeof stopSpeech==="function")stopSpeech();}
+function askAiSpeak(text){if(!text)return;if(typeof stopSpeech==="function")stopSpeech();
+  if(typeof speakText==="function"){const tok=(typeof SAYT==="number"?++SAYT:0);speakText(askAiPlain(text),null,tok);}
+  else if(typeof canSpeak!=="undefined"&&canSpeak){try{const u=new SpeechSynthesisUtterance(askAiPlain(text));u.lang="en-US";speechSynthesis.speak(u);}catch(e){}}}
+function askAiRender(){let m=$("#askaiModal");
+  if(!m){m=document.createElement("div");m.id="askaiModal";m.className="askai-modal";m.hidden=true;
+    m.addEventListener("click",e=>{if(e.target===m)askAiClose();});
+    document.body.appendChild(m);}
+  const ctx=ASKAI.ctx;if(!ctx){m.hidden=true;return;}
+  const sess=askAiSession(ASKAI.key);const online=askAiOnline();
+  const chips=askAiChips(ctx.kind);
+  const ctxBits=[`<div class="askai-q"><b>${esc(ctx.title)}</b><div>${esc(ctx.question)}</div></div>`];
+  if(ctx.kind==="c"&&ctx.official)ctxBits.push(`<div class="askai-off"><b>Official answer to say at the interview</b><div>${askAiEsc(ctx.official.replace(/^Official 2025 USCIS accepted answers?:\n/,""))}</div></div>`);
+  if(ctx.kind==="m"&&ctx.hint)ctxBits.push(`<div class="askai-off"><b>Hint</b><div>${esc(ctx.hint)}</div></div>`);
+  if(ctx.saved)ctxBits.push(`<div class="askai-off"><b>On this phone</b><div>${askAiEsc(ctx.saved)}</div></div>`);
+  const msgs=sess.msgs.map((msg,i)=>{
+    if(msg.role==="user")return `<div class="askai-msg me"><div class="askai-bubble">${askAiEsc(msg.text)}</div></div>`;
+    return `<div class="askai-msg ai"><div class="askai-bubble">${askAiEsc(msg.text)}</div>
+      <button type="button" class="readthis askai-speak" data-ask-speak="${i}" aria-label="Read this answer">🔊</button></div>`;
+  }).join("");
+  const thinking=ASKAI.sending?`<div class="askai-msg ai"><div class="askai-bubble thinking">Thinking…</div></div>`:"";
+  const err=ASKAI.busyMsg?`<p class="askai-err">${esc(ASKAI.busyMsg)}</p>`:"";
+  const offlineNote=!online?`<div class="askai-offnote">Ask AI needs internet. Everything else in the app still works offline — open this again when you’re back online.</div>`:"";
+  const chipHTML=online&&!sess.msgs.length?`<div class="askai-chips">${chips.map((c,i)=>`<button type="button" class="chip" data-ask-chip="${i}">${esc(c[0])}</button>`).join("")}</div>`:"";
+  m.hidden=false;
+  m.innerHTML=`<div class="askai-sheet" role="dialog" aria-modal="true" aria-labelledby="askaiTitle">
+    <div class="askai-head"><h2 id="askaiTitle">✨ Ask AI</h2><button type="button" class="iconbtn askai-x" id="askaiClose" aria-label="Close">✕</button></div>
+    <div class="askai-body" id="askaiBody">
+      ${ctxBits.join("")}
+      <div class="askai-thread" id="askaiThread">${msgs}${thinking}</div>
+      ${err}${offlineNote}${chipHTML}
+    </div>
+    <p class="askai-voice">🔊 This voice is muted when the iPhone is on silent.</p>
+    <form class="askai-form" id="askaiForm">
+      <input id="askaiInput" class="typein" autocomplete="off" autocorrect="on" enterkeyhint="send" aria-label="Your question" placeholder="${online?"Ask a follow-up…":"Connect to the internet to ask"}" ${online&&!ASKAI.sending?"":"disabled"}>
+      <button class="btn" type="submit" ${online&&!ASKAI.sending?"":"disabled"}>Send</button>
+    </form>
+  </div>`;
+  $("#askaiClose").onclick=()=>askAiClose();
+  const form=$("#askaiForm");if(form)form.onsubmit=e=>{e.preventDefault();const inp=$("#askaiInput");askAiSend(inp?inp.value:"");};
+  m.querySelectorAll("[data-ask-chip]").forEach(b=>b.onclick=()=>askAiSend(askAiChips(ctx.kind)[+b.dataset.askChip][1]));
+  m.querySelectorAll("[data-ask-speak]").forEach(b=>b.onclick=e=>{e.preventDefault();e.stopPropagation();const msg=sess.msgs[+b.dataset.askSpeak];if(msg&&msg.role==="model")askAiSpeak(msg.text);});
+  const thread=$("#askaiThread");if(thread)thread.scrollTop=thread.scrollHeight;}
+async function askAiSend(raw){const text=String(raw||"").trim();if(!text||ASKAI.sending||!ASKAI.ctx)return;
+  if(!askAiOnline()){ASKAI.busyMsg="Ask AI needs internet. Everything else in the app still works offline.";askAiRender();return;}
+  if(!askAiRateOk()){ASKAI.busyMsg=askAiRateWait();askAiRender();return;}
+  const sess=askAiSession(ASKAI.key);sess.msgs.push({role:"user",text});ASKAI.sending=true;ASKAI.busyMsg="";askAiRender();
+  try{const svc=await askAiEnsure();
+    const model=svc.aiM.getGenerativeModel(svc.ai,{model:ASKAI_MODEL,systemInstruction:askAiSystem(ASKAI.ctx),generationConfig:{maxOutputTokens:450,temperature:.7}});
+    const history=sess.msgs.slice(0,-1).filter(x=>x.text).map(x=>({role:x.role==="user"?"user":"model",parts:[{text:x.text}]}));
+    // Some Gemini 3.x flash-lite models reject a history that ends on a model turn; startChat with prior turns is fine when the next send is the user.
+    const chat=history.length?model.startChat({history}):model.startChat();
+    ASKAI.times.push(Date.now());
+    const result=await chat.sendMessage(text);
+    const reply=askAiPlain((result&&result.response&&typeof result.response.text==="function"?result.response.text():"")||"");
+    if(!reply)throw new Error("empty");
+    sess.msgs.push({role:"model",text:reply});ASKAI.busyMsg="";}
+  catch(e){console.warn("ask ai failed",e);sess.msgs.pop();
+    const msg=String((e&&(e.message||e.code))||e||"");
+    if(!askAiOnline()||/offline|network|fetch|Failed to fetch|unavailable/i.test(msg))ASKAI.busyMsg="Ask AI needs internet. Everything else in the app still works offline.";
+    else if(/429|resource.exhausted|quota|rate.?limit/i.test(msg))ASKAI.busyMsg="The free daily questions are used up for now. Try again later today.";
+    else if(/permission|403|restricted|API_KEY|referer|referrer|unauth/i.test(msg))ASKAI.busyMsg="Ask AI couldn’t start right now. Try again in a minute.";
+    else ASKAI.busyMsg="I couldn’t get an answer just then. Please try again.";}
+  finally{ASKAI.sending=false;askAiRender();}}
+document.addEventListener("click",e=>{
+  const b=e.target.closest("[data-ask-ai]");
+  if(!b)return;e.preventDefault();e.stopPropagation();askAiOpen(b.dataset.askAi);
+},true);
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&ASKAI.open){e.preventDefault();askAiClose();}});
+
 // ---------- keyboard ----------
 document.addEventListener("keydown",e=>{if(e.target.matches("input,textarea,select"))return;const on=document.querySelector(".view.on").id;
   if(on==="v-flash"){if(typeof sessInReview==="function"&&sessInReview()){if(e.key==="ArrowLeft"){e.preventDefault();sessBack();}if(e.key==="ArrowRight"){e.preventDefault();sessForward();}return;}if(e.key===" "){e.preventDefault();flipFlash();}if(e.key==="ArrowRight")flashAnswer(true);if(e.key==="ArrowLeft")flashAnswer(false);}
@@ -2149,6 +2343,7 @@ document.addEventListener("keydown",e=>{if(e.target.matches("input,textarea,sele
 
 // ---------- init ----------
 load();if(typeof applyTheme==="function")applyTheme();if(canSpeak)syncReadBtn();else if($("#sndBtn"))$("#sndBtn").style.display="none";
+addEventListener("resize",()=>{if(typeof syncStickyOffsets==="function")syncStickyOffsets();});
 refreshStats();chips();updateHome();
 if(typeof sessLoad==="function"){sessLoad();const boot=location.hash.slice(1);const mode=SESS&&SESS.mode;const view=mode==="final"||mode==="review"||mode==="quiz"?"quiz":mode==="couple"?"couplequiz":mode;if(mode&&(boot===view||boot===mode||(boot==="review"&&mode==="review")))SESS_WANT_RESTORE=true;}
 window.__civics={count:DATA.length,DATA,S:()=>S,SUGGESTED,GROUPS,COUPLE,myPicks,suggestedPicks,togglePick,picksAreSuggested,openSection,setAuto,stopSpeech,speakItems,readCivics,autoReadQuestion,autoReadFlashBack,autoReadFeedback,pickSpeech,answersSpeech,sess:()=>SESS,sessStart,sessPush,sessBack,sessForward,sessShow,sessExitReview,auJump,auHasQStops,auNudge,
@@ -2157,6 +2352,7 @@ window.__civics={count:DATA.length,DATA,S:()=>S,SUGGESTED,GROUPS,COUPLE,myPicks,
   syncMerge:typeof syncMerge==="function"?syncMerge:undefined,syncPreview:typeof syncPreview==="function"?syncPreview:undefined};
 if(typeof cloudBoot==="function"){window.__civics.cloud={CLOUD:()=>CLOUD,cloudBuild,cloudMergePayload,cloudApply,cloudStamp,cloudNewCode,cloudNormCode,cloudCodeValid,cloudDocId,cloudSeal,cloudOpen,cloudSyncNow,cloudExists,cloudTurnOff,cloudFb};cloudBoot();}
 if(typeof planInfo==="function"){window.__civics.planInfo=planInfo;window.__civics.weakOrMissed=weakOrMissed;window.__civics.nowDate=nowDate;}
+if(typeof askAiOpen==="function"){window.__civics.askAi={ASKAI:()=>ASKAI,ASKAI_CHATS,ASKAI_MODEL,askAiOpen,askAiClose,askAiSend,askAiBtn,askAiAvailable};}
 const START=["flash","quiz","mock","review","list","mine","speak","report","groups","choose","marriage","couplecats","couplequiz","coupledocs","coupletips","couplechanges","couplesources","couplenotice","home"];
 const rawHash=location.hash.slice(1);
 const incomingSync=rawHash.startsWith("sync=")?rawHash.slice(5):null;
