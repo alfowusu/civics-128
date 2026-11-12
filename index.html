@@ -2325,9 +2325,9 @@ async function askAiSend(raw){const text=String(raw||"").trim();if(!text||ASKAI.
     sess.msgs.push({role:"model",text:reply});ASKAI.busyMsg="";}
   catch(e){console.warn("ask ai failed",e);sess.msgs.pop();
     const msg=String((e&&(e.message||e.code))||e||"");
-    if(!askAiOnline()||/offline|network|fetch|Failed to fetch|unavailable/i.test(msg))ASKAI.busyMsg="Ask AI needs internet. Everything else in the app still works offline.";
-    else if(/429|resource.exhausted|quota|rate.?limit/i.test(msg))ASKAI.busyMsg="The free daily questions are used up for now. Try again later today.";
-    else if(/permission|403|restricted|API_KEY|referer|referrer|unauth/i.test(msg))ASKAI.busyMsg="Ask AI couldn’t start right now. Try again in a minute.";
+    if(/429|resource.exhausted|quota|rate.?limit/i.test(msg))ASKAI.busyMsg="The free daily questions are used up for now. Try again later today.";
+    else if(/permission|403|restricted|API_KEY|referer|referrer|unauth|API_KEY_SERVICE_BLOCKED|are blocked/i.test(msg))ASKAI.busyMsg="Ask AI couldn’t start right now. Try again in a minute.";
+    else if(!askAiOnline()||/offline|network|Failed to fetch|unavailable/i.test(msg))ASKAI.busyMsg="Ask AI needs internet. Everything else in the app still works offline.";
     else ASKAI.busyMsg="I couldn’t get an answer just then. Please try again.";}
   finally{ASKAI.sending=false;askAiRender();}}
 document.addEventListener("click",e=>{
