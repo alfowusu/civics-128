@@ -436,6 +436,20 @@ html[data-theme=dark] .askai-chips .chip{background:#232a3d;border-color:#3a4258
 html[data-theme=dark] .askai-err,html[data-theme=dark] .askai-offnote{background:#33240f;border-color:#a35d00;color:var(--ink)}
 html[data-theme=dark] .askai-sheet{box-shadow:0 -12px 40px #000a}
 
+/* My progress */
+.m12{background:linear-gradient(135deg,#1864ab,#364fc7)}
+.badge.low{background:#ffe3e3;color:#a61e1e}
+.badge.mix{background:#fff3bf;color:#7a4b00}
+.prog-group{margin-bottom:12px}
+.prog-group .tbar{padding:10px 0}
+.prog-group .prog-go,.prog-msub .prog-go{min-height:40px;padding:8px 12px;font-size:.9rem;flex:none;margin:0}
+.prog-group .trow{align-items:center;margin-top:6px}
+.prog-msub{margin:12px 0 16px;padding-top:4px;border-top:1px solid #f1f3f5}
+.prog-msub>b{font-size:1rem}
+html[data-theme=dark] .badge.low{background:#3d1a1d;color:#ffa8a8}
+html[data-theme=dark] .badge.mix{background:#3a2f0b;color:#ffe066}
+html[data-theme=dark] .prog-msub{border-color:#2a3042}
+
 </style>
 </head>
 <body>
@@ -480,6 +494,7 @@ html[data-theme=dark] .askai-sheet{box-shadow:0 -12px 40px #000a}
   </div>
   <h2>Interview practice</h2>
   <div class="modes">
+    <button class="mode m12" data-go="progress"><span class="e">📈</span><b>My progress</b><small id="progSub">See where you’re strong and what needs more attention</small></button>
     <button class="mode m9" data-go="speak"><span class="e">🗣️</span><b>Speaking practice</b><small>The officer asks civics questions out loud. No choices shown</small></button>
     <button class="mode m11" data-go="report"><span class="e">📊</span><b>Weak-spot report</b><small id="repSub">See what to study next</small></button>
   </div>
@@ -563,6 +578,7 @@ html[data-theme=dark] .askai-sheet{box-shadow:0 -12px 40px #000a}
 
 <!-- MINE -->
 <section class="view" id="v-speak"><div class="topline"><button class="back" data-go="home">← Home</button><div class="meta" id="spMeta">Speaking practice</div></div><div id="spArea"></div></section>
+<section class="view" id="v-progress"><div class="topline"><button class="back" data-go="home">← Home</button><div class="meta">My progress</div></div><div id="progArea"></div></section>
 <section class="view" id="v-report"><div class="topline"><button class="back" data-go="home">← Home</button><div class="meta">Weak-spot report</div></div><div id="repArea"></div></section>
 <section class="view" id="v-groups"><div class="topline"><button class="back" data-go="home">← Home</button><div class="meta">Shared answers</div></div><div id="grpArea"></div></section>
 <section class="view" id="v-marriage"><div class="topline"><button class="back" data-go="choose">← Civics &amp; Marriage</button><div class="meta">Couple interview</div></div><div id="marArea"></div></section>
@@ -630,6 +646,7 @@ function record(n,ok,opts={}){
   const p=P(n);p.seen++;p.t=Date.now();touchDay();
   if(ok){p.right++;p.run++;p.box=Math.min(5,p.box+1);if(p.miss&&p.run>=2)p.miss=false;S.streak++;S.best=Math.max(S.best,S.streak);const pts=10+Math.min(S.streak,10)*2;S.xp+=pts;if(opts.el)plus("+"+pts,opts.el);if(S.streak>0&&S.streak%5===0)streakFx(S.streak);}
   else{p.wrong++;p.run=0;p.box=0;p.miss=true;S.streak=0;}
+  p.recent=Array.isArray(p.recent)?p.recent:[];p.recent.push([ok?1:0,p.t]);if(p.recent.length>5)p.recent=p.recent.slice(-5);
   if(typeof histAdd==="function")histAdd("civics",ok);save();if(typeof goalCheck==="function")goalCheck(true);refreshStats();
 }
 // ---------- utils ----------
@@ -918,7 +935,7 @@ function makeOptions(q){
 // ---------- router ----------
 let timerH=0;
 function stopTimer(){clearInterval(timerH);timerH=0;}
-const CIVIC_VIEWS=["home","flash","quiz","review","mock","list","mine","speak","report","groups"];
+const CIVIC_VIEWS=["home","flash","quiz","review","mock","list","mine","speak","report","groups","progress"];
 const MARRY_VIEWS=["marriage","couplecats","couplequiz","coupledocs","coupletips","couplechanges","couplesources","couplenotice"];
 function rememberSection(v){if(CIVIC_VIEWS.includes(v)&&S.section!=="civics"){S.section="civics";save();}if(MARRY_VIEWS.includes(v)&&S.section!=="marriage"){S.section="marriage";save();}}
 function openSection(sec){S.section=sec==="marriage"?"marriage":"civics";save();go(S.section==="marriage"?"marriage":"home");}
@@ -1699,7 +1716,7 @@ function renderReport(){const cs=catStats();let R=0,W=0;cs.forEach(c=>{R+=c.r;W+
    <p class="small">${sp?`Last session: ${sp.right}/${sp.asked} correct${sp.pass==null?" (practice)":sp.pass?" ✅ passed":" ❌ not yet"}. Real-test sessions: ${spReal.filter(r=>r.pass).length}/${spReal.length} passed.`:"No speaking sessions yet."}</p>${spk.length?`<p class="small">Recent: ${spk.slice(-5).reverse().map(r=>`${r.pass==null?"🗣️":r.pass?"✅":"❌"} ${r.right}/${r.asked}`).join(" · ")}</p>`:""}<button class="btn ghost" data-go="speak" style="width:100%">🗣️ Speaking practice</button></div>`;
   if($("#repGo"))$("#repGo").onclick=()=>startCustom(rec,"🎯 Recommended set");}
 function startCustom(nums,label,opts){go("quiz");Q.list=nums.map(n=>BYN[n]).filter(Boolean);Q.label=label;Q.seq=!!(opts&&opts.seq);Q.si=0;recent=[];if(typeof sessStart==="function")sessStart(/calm|🌙|final/i.test(String(label||""))?"final":"quiz");nextQuiz();}
-function updateExtHome(){renderGoal();renderTheme();renderPlan();renderFinal();if(S.rw||S.n4){delete S.rw;delete S.n4;save();}const el=$("#repSub");if(!el)return;const r=recommend().length;const mi=misses().length;el.textContent=mi?`${mi} missed · ${r} recommended`:"See what to study next";}
+function updateExtHome(){renderGoal();renderTheme();renderPlan();renderFinal();if(S.rw||S.n4){delete S.rw;delete S.n4;save();}const el=$("#repSub");if(el){const r=recommend().length;const mi=misses().length;el.textContent=mi?`${mi} missed · ${r} recommended`:"See what to study next";}if(typeof updateProgHome==="function")updateProgHome();}
 function renderGroups(){
   const list=(GROUPS||[]).slice().sort((a,b)=>b.qs.length-a.qs.length||String(a.answer).localeCompare(String(b.answer)));
   $("#grpArea").innerHTML=`<div class="panel"><p style="margin-top:0">These answers show up on more than one question. Learn the answer once, and you can use it in several places. Every group matches an official 2025 answer.</p>
@@ -1803,7 +1820,7 @@ function renderCoupleQuiz(){const el=$("#cquizArea");if(!el)return;
   if(CQ.i>=CQ.list.length){const rev=(S.coupleReview&&S.coupleReview.length)||0;
     el.innerHTML=`<div class="qcard result" style="text-align:center"><div class="big">💑</div><h2>Nice practice</h2><p>You went through ${CQ.list.length} question${CQ.list.length===1?"":"s"}${rev?` · ${rev} marked to review again`:""}.</p>
       <div class="row"><button class="btn" id="cqAgain">Again</button><button class="btn ghost" data-go="marriage">Couple home</button></div></div>`;
-    if($("#cqAgain"))$("#cqAgain").onclick=()=>startCoupleQuiz(CQ.cat);
+    if($("#cqAgain"))$("#cqAgain").onclick=()=>{if(CQ&&CQ.ids&&typeof startCouplePractice==="function")startCouplePractice(CQ.ids,CQ.label);else startCoupleQuiz(CQ.cat);};
     $("#cqMeta").textContent="Quiz each other";return;}
   const q=CQ.list[CQ.i], marked=!!(S.coupleReview&&S.coupleReview.includes(q.id));
   const saved=coupleAns(q.id);
@@ -1831,6 +1848,7 @@ function renderCoupleQuiz(){const el=$("#cquizArea");if(!el)return;
   if($("#cqPrev"))$("#cqPrev").onclick=()=>{CQ.i=Math.max(0,CQ.i-1);renderCoupleQuiz();};
   if($("#cqSwitch"))$("#cqSwitch").onclick=()=>{CQ.asker=CQ.asker===1?2:1;renderCoupleQuiz();};
   if($("#cqMark"))$("#cqMark").onclick=()=>{S.coupleReview=S.coupleReview||[];const i=S.coupleReview.indexOf(q.id);if(i>=0)S.coupleReview.splice(i,1);else S.coupleReview.push(q.id);save();renderCoupleQuiz();};
+  if(typeof coupleMarkSeen==="function")coupleMarkSeen(q.id);
   if(typeof sessPush==="function"&&!SESS.items.some(it=>it.id===q.id))sessPush({id:q.id,ok:null,how:"couple"});
   if(typeof sessSave==="function")sessSave();if(typeof sessSyncNav==="function")sessSyncNav();
   if(typeof canAutoRead==="function"?canAutoRead():S.auto)speakItems([{clip:"mq-"+q.id,text:q.q}]);}
@@ -2011,7 +2029,7 @@ async function checkIncomingSync(raw){if(!raw){const h=location.hash.slice(1);if
   try{const payload=await syncDecode(raw);if(!payload||payload.v!==1){alert("Could not read the shared link.");return;}showSyncPreview(payload);}
   catch(e){alert("Could not read the shared link.");}}
 
-const EXTGO={speak:speakIntro,report:renderReport,groups:renderGroups,choose:renderChooser,marriage:renderMarriage,couplecats:renderCoupleCats,couplequiz:()=>{CQ=null;renderCoupleQuiz()},coupledocs:renderCoupleDocs,coupletips:renderCoupleTips,couplechanges:renderCoupleChanges,couplesources:renderCoupleSources,couplenotice:renderCoupleNotice};
+const EXTGO={speak:speakIntro,report:renderReport,progress:()=>{if(typeof renderProgress==="function")renderProgress();},groups:renderGroups,choose:renderChooser,marriage:renderMarriage,couplecats:renderCoupleCats,couplequiz:()=>{CQ=null;renderCoupleQuiz()},coupledocs:renderCoupleDocs,coupletips:renderCoupleTips,couplechanges:renderCoupleChanges,couplesources:renderCoupleSources,couplenotice:renderCoupleNotice};
 
 // ---- ☁️ Cloud sync (Firebase, end-to-end encrypted with the couple code) ----
 const CLOUD_CFG=(typeof window!=="undefined"&&window.__CLOUD_CFG)||{"apiKey": "AIzaSyAlBormKBOLPdz_dvyIGnQVbkOBpFI_UYU", "authDomain": "civics128-sync-c64828.firebaseapp.com", "projectId": "civics128-sync-c64828", "storageBucket": "civics128-sync-c64828.firebasestorage.app", "messagingSenderId": "240468996283", "appId": "1:240468996283:web:39176834b39df792fef99e"};
@@ -2422,6 +2440,239 @@ document.addEventListener("click",e=>{
 },true);
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&ASKAI.open){e.preventDefault();askAiClose();}});
 
+// ---- My progress (games and quizzes only; listening does not count) ----
+const PROG_REC=5, PROG_STALE=7*864e5, PROG_STRONG=.85, PROG_LOW=.6, PROG_COVER=.7;
+const PROG_W=[1,1.25,1.5,1.8,2.2];
+const PROG_GROUPS=[
+  {k:"st",t:"Strong",blurb:"High recent accuracy, and you practiced this lately."},
+  {k:"mix",t:"Needs more practice",blurb:"Mixed results, or you haven’t tried enough of the questions yet."},
+  {k:"low",t:"Struggling",blurb:"Low recent accuracy, or you missed several of these lately."},
+  {k:"ns",t:"Not practiced yet / Ignored",blurb:"Never tried, or not practiced in 7 or more days."}
+];
+function progNow(){return Date.now();}
+function progAttempts(p){
+  if(p&&Array.isArray(p.recent)&&p.recent.length){
+    return p.recent.slice(-PROG_REC).map(x=>Array.isArray(x)?{ok:+x[0],t:+x[1]||0}:{ok:x.ok?1:0,t:x.t||0});
+  }
+  if(!p||!(p.seen||p.right||p.wrong))return [];
+  // Older saves have no attempt list. Use lifetime counts, with the last result inferred from a current miss.
+  const n=Math.min(PROG_REC,Math.max(0,(p.right||0)+(p.wrong||0)));
+  if(!n)return [];
+  const out=[];let wrong=Math.min(p.wrong||0,n), right=n-wrong;
+  if(p.miss&&wrong){out.push({ok:0,t:p.t||0});wrong--;}
+  while(out.length<n){if(right){out.unshift({ok:1,t:p.t||0});right--;}else{out.unshift({ok:0,t:p.t||0});wrong--;}}
+  return out;
+}
+function progWeighted(atts){
+  if(!atts||!atts.length)return{acc:null,n:0,ok:0,wOk:0,wAll:0};
+  const start=PROG_W.length-atts.length;
+  let wOk=0,wAll=0,ok=0;
+  atts.forEach((a,i)=>{const w=PROG_W[start+i]||1;wAll+=w;if(a.ok){wOk+=w;ok++;}});
+  return{acc:wAll?wOk/wAll:null,n:atts.length,ok,wOk,wAll};
+}
+function progQStat(q){
+  const p=S.p&&S.p[q.n], atts=progAttempts(p), sc=progWeighted(atts);
+  const seen=!!(p&&p.seen), t=p&&p.t||0, stale=seen&&t&&(progNow()-t>=PROG_STALE);
+  const lastOk=atts.length?!!atts[atts.length-1].ok:!p||!p.miss;
+  let k="ns";
+  if(!seen)k="ns";
+  else if(stale)k="ns";
+  else if(sc.n>=2&&(sc.acc<PROG_LOW||!lastOk&&sc.acc<PROG_STRONG))k="low";
+  else if(sc.n>=2&&sc.acc>=PROG_STRONG&&lastOk)k="st";
+  else k="mix";
+  // A single recent miss, or marked as a current miss, counts as struggling.
+  if(seen&&!stale&&(p.miss||(atts.length&&!lastOk&&sc.acc<PROG_STRONG)))k="low";
+  if(seen&&!stale&&sc.n>=3&&sc.acc>=PROG_STRONG&&!p.miss)k="st";
+  return{q,p,atts,acc:sc.acc,n:sc.n,ok:sc.ok,wOk:sc.wOk,wAll:sc.wAll,seen,t,stale,lastOk,miss:!!(p&&p.miss),wrong:p&&p.wrong||0,right:p&&p.right||0,k};
+}
+function progTopicStatus(c){
+  const practiced=c.qs.filter(q=>q.seen);
+  if(!practiced.length)return"ns";
+  if(!c.last||(progNow()-c.last>=PROG_STALE))return"ns";
+  const acc=c.wAll?c.wOk/c.wAll:null;
+  const lastMiss=practiced.filter(q=>q.miss||(q.atts.length&&!q.lastOk)).length;
+  if(acc!=null&&((c.att>=2&&acc<PROG_LOW)||(practiced.length>=2&&lastMiss/practiced.length>.5)))return"low";
+  if(acc!=null&&acc>=PROG_STRONG&&(c.cov>=PROG_COVER||c.att>=5))return"st";
+  return"mix";
+}
+function progTopics(){
+  return CATS.map((c,i)=>{
+    const qs=DATA.filter(q=>q.category===c).map(progQStat);
+    let wOk=0,wAll=0,att=0,last=0,seen=0;
+    qs.forEach(q=>{wOk+=q.wOk;wAll+=q.wAll;att+=q.n;if(q.seen)seen++;last=Math.max(last,q.t||0);});
+    const o={i,c,qs,att,seen,last,wOk,wAll,acc:wAll?wOk/wAll:null,cov:qs.length?seen/qs.length:0};
+    o.st=progTopicStatus(o);return o;
+  });
+}
+function progMissed(qs){
+  return qs.filter(q=>q.seen&&(q.wrong>0||q.miss||(q.atts.length&&q.atts.some(a=>!a.ok))))
+    .sort((a,b)=>{
+      const aw=a.atts.filter(x=>!x.ok).length, bw=b.atts.filter(x=>!x.ok).length;
+      return (bw-aw)||(b.wrong-a.wrong)||((a.acc==null?1:a.acc)-(b.acc==null?1:b.acc));
+    });
+}
+function progUnseen(qs){return qs.filter(q=>!q.seen);}
+function progNums(list){return list.map(q=>q.q.n);}
+function progPractice(nums,label){if(!nums||!nums.length)return;startCustom(nums,label);}
+function coupleLast(id){return (S.coupleSeen&&S.coupleSeen[id])||0;}
+function coupleMarkSeen(id){if(!id)return;S.coupleSeen=S.coupleSeen||{};S.coupleSeen[id]=Date.now();save();}
+function coupleQStat(q){
+  const rec=typeof coupleGet==="function"?coupleGet(q.id):null;
+  const has=!!(rec&&String(rec.answer||"").trim());
+  const marked=!!(S.coupleReview&&S.coupleReview.includes(q.id));
+  const t=Math.max(coupleLast(q.id), (rec&&(rec.answerAt||rec.notesAt))||0);
+  const seen=has||t>0;
+  const stale=seen&&t&&(progNow()-t>=PROG_STALE);
+  let k="ns";
+  if(marked)k="low";
+  else if(!seen||stale)k="ns";
+  else if(has)k="st";
+  else k="mix";
+  return{q,has,marked,t,seen,stale,k};
+}
+function coupleTopicStats(){
+  return coupleCats().map(c=>{
+    const qs=c.questions.map(q=>coupleQStat(Object.assign({cat:c.id,catTitle:c.title},q)));
+    const last=qs.reduce((m,q)=>Math.max(m,q.t||0),0);
+    const has=qs.filter(q=>q.has).length, marked=qs.filter(q=>q.marked).length, seen=qs.filter(q=>q.seen).length;
+    let st="ns";
+    if(!qs.length)st="ns";
+    else if(marked)st="low";
+    else if(!seen||(last&&progNow()-last>=PROG_STALE))st="ns";
+    else if(has===qs.length)st="st";
+    else st="mix";
+    return{c,qs,has,marked,seen,last,st,cov:qs.length?has/qs.length:0};
+  });
+}
+function startCouplePractice(ids,label){
+  if(typeof startCoupleQuiz!=="function"||!ids||!ids.length)return;
+  const all=coupleAllQ();const list=ids.map(id=>all.find(q=>q.id===id)).filter(Boolean);
+  if(!list.length)return;
+  CQ={list,i:0,asker:1,cat:"",label:label||"",ids:list.map(q=>q.id)};
+  stopTimer();if(typeof plStop==="function"&&PL.playing)plStop();if(typeof stopListen==="function")stopListen();if(typeof stopSpeech==="function")stopSpeech();
+  document.querySelectorAll(".view").forEach(x=>x.classList.remove("on"));
+  rememberSection("couplequiz");const node=$("#v-couplequiz");if(node)node.classList.add("on");
+  scrollTo(0,0);location.hash="couplequiz";syncChrome();
+  renderCoupleQuiz();
+}
+function progBar(acc,tone){
+  const pct=acc==null?0:Math.max(4,Math.round(acc*100));
+  const col=acc==null?"#ced4da":acc>=PROG_STRONG?"#40c057":acc>=PROG_LOW?"#fab005":"#fa5252";
+  return `<div class="bt" title="${tone||"Accuracy"}"><div class="bf" style="width:${pct}%;background:${col}"></div></div>`;
+}
+function progTopicBadge(c,kind){
+  if(c.st==="ns")return c.seen?"Left aside":"Not started";
+  return kind;
+}
+function progTopicRow(c,kind){
+  const name=esc(CAT_SHORT[c.c]||c.c);
+  const acc=c.acc==null?"No answers yet":`${Math.round(c.acc*100)}% recent`;
+  const last=c.last?ago(c.last):"never";
+  const left=c.qs.length-c.seen;
+  const tryNote=left?`${left} not tried yet`:"Every question tried";
+  return `<div class="tbar topic">
+    <div class="bl"><b>${name}</b><span class="badge ${c.st}">${esc(progTopicBadge(c,kind))}</span></div>
+    <div class="tm">${acc} · Tried <b>${c.seen}/${c.qs.length}</b> · Last practiced: ${last}</div>
+    ${progBar(c.acc)}
+    <div class="bt cov" title="Questions tried"><div class="bf" style="width:${Math.round(c.cov*100)}%"></div></div>
+    <div class="trow"><span class="small">${tryNote}</span>
+      <button class="btn g prog-go" data-prog-qs="${progNums(c.qs).join(",")}" data-prog-label="🧭 ${esc(CAT_SHORT[c.c]||c.c)}">▶ Practice these</button></div>
+  </div>`;
+}
+function progGroupHTML(g, topics){
+  const list=topics.filter(c=>c.st===g.k);
+  const nums=list.flatMap(c=>progNums(c.qs));
+  const uniq=[...new Set(nums)];
+  return `<div class="panel prog-group ${g.k}"><h3 style="margin-top:0"><span class="badge ${g.k}">${esc(g.t)}</span> <span class="small">${list.length} topic${list.length===1?"":"s"}</span></h3>
+    <p class="small" style="margin-top:0">${esc(g.blurb)}</p>
+    ${list.length?`<div class="bars">${list.map(c=>progTopicRow(c,g.t)).join("")}</div>`+'<button class="btn g" data-prog-qs="'+uniq.join(",")+'" data-prog-label="📈 '+esc(g.t)+'" style="width:100%;margin-top:8px">▶ Practice this group</button>':`<p class="small">Nothing in this group right now.</p>`}
+  </div>`;
+}
+function progQRow(q,tag){
+  const sc=q.n?`${q.atts.filter(a=>!a.ok).length} recent miss${q.atts.filter(a=>!a.ok).length===1?"":"es"} · lifetime ✗${q.wrong} ✓${q.right}`:`🆕 never tried`;
+  return `<div class="mm">${typeof readThisBtn==="function"?readThisBtn('data-read-q="'+q.q.n+'"'):""}<span class="c">${tag||sc}</span>
+    <div><div>${q.q.n}. ${esc(q.q.q)}${typeof pickLine==="function"?pickLine(q.q):""}</div>${typeof ansList==="function"?ansList(q.q):""}${typeof askAiBtn==="function"?askAiBtn("c",q.q.n):""}</div></div>`;
+}
+function progMarriageHTML(){
+  if(typeof coupleCats!=="function"||!coupleCats().length)return"";
+  const ts=coupleTopicStats();
+  const labels={st:"Prepared",mix:"Needs more practice",low:"Needs attention",ns:"Not practiced yet / Ignored"};
+  const blurbs={
+    st:"You have a saved answer for every question in these topics, and you’ve looked at them in the last week.",
+    mix:"Some answers are saved, but the topic isn’t finished yet.",
+    low:"You marked questions here to review again.",
+    ns:"No saved answer yet, or not opened in 7 or more days."
+  };
+  const groups=["low","mix","st","ns"];
+  const any=ts.some(t=>t.seen||t.marked||t.has);
+  let body="";
+  if(!any)body=`<p class="small">Marriage practice isn’t scored right or wrong. After you write “Our answer” or go through Quiz each other, this section will show which topics you’ve prepared and which you’ve left aside. Listening does not count.</p>`;
+  else{
+    body=groups.map(k=>{
+      const list=ts.filter(t=>t.st===k);if(!list.length)return"";
+      const ids=list.flatMap(t=>t.qs.filter(q=>k==="low"?q.marked:k==="ns"?(!q.has||q.stale):true).map(q=>q.q.id));
+      return `<div class="prog-msub"><b>${esc(labels[k])}</b> <span class="small">${list.length} topic${list.length===1?"":"s"}</span>
+        <p class="small" style="margin:4px 0 8px">${esc(blurbs[k])}</p>
+        <div class="bars">${list.map(t=>`<div class="tbar topic"><div class="bl"><b>${esc((t.c.emoji||"")+" "+t.c.title)}</b><span class="badge ${t.st}">${esc(labels[k])}</span></div>
+          <div class="tm">${t.has}/${t.qs.length} with a saved answer${t.marked?` · ${t.marked} marked to review`:""} · Last activity: ${t.last?ago(t.last):"never"}</div>
+          ${progBar(t.qs.length?t.has/t.qs.length:null,"Saved answers")}
+          <div class="trow"><span class="small"></span><button class="btn g prog-go" data-prog-couple="${t.qs.map(q=>q.q.id).join(",")}" data-prog-label="${esc(t.c.title)}">▶ Practice these</button></div>
+        </div>`).join("")}</div>
+        ${ids.length?`<button class="btn ghost" data-prog-couple="${ids.join(",")}" data-prog-label="${esc(labels[k])}" style="width:100%;margin-top:6px">▶ Practice this group</button>`:""}
+      </div>`;
+    }).join("");
+  }
+  return `<div class="panel"><h3 style="margin-top:0">💑 Marriage questions</h3>
+    <p class="small">A separate look at the couple-interview topics. This is based on saved answers, questions marked to review, and Quiz each other — not listening.</p>
+    ${body}</div>`;
+}
+function progSummary(topics, all){
+  const tried=all.filter(q=>q.seen).length, att=all.reduce((s,q)=>s+q.n,0);
+  const accAll=(()=>{let wOk=0,wAll=0;all.forEach(q=>{wOk+=q.wOk;wAll+=q.wAll;});return wAll?wOk/wAll:null;})();
+  const nSt=topics.filter(c=>c.st==="st").length, nLow=topics.filter(c=>c.st==="low").length, nMix=topics.filter(c=>c.st==="mix").length, nNs=topics.filter(c=>c.st==="ns").length;
+  return `<div class="panel"><div class="tiles">
+    <div class="tile"><b>${tried}/128</b>questions tried</div>
+    <div class="tile"><b>${accAll==null?"–":Math.round(accAll*100)+"%"}</b>recent accuracy</div>
+    <div class="tile"><b>${nSt}</b>strong topics</div>
+    <div class="tile"><b>${nLow+nMix}</b>need attention</div>
+  </div>
+  <p class="small" style="margin:10px 0 0">Games and quizzes only — listening doesn’t count. Newer answers count more (your last 5 tries on each question).${nNs?` ${nNs} topic${nNs===1?"":"s"} ${nNs===1?"hasn’t":"haven’t"} been practiced in the last 7 days.`:""}</p></div>`;
+}
+function renderProgress(){
+  const el=$("#progArea");if(!el)return;
+  const topics=progTopics();const all=topics.flatMap(c=>c.qs);
+  const tried=all.some(q=>q.seen);
+  const missed=progMissed(all).slice(0,8);
+  const unseen=progUnseen(all);
+  const unseenShow=unseen.slice(0,8);
+  let html=progSummary(topics,all);
+  if(!tried){
+    html+=`<div class="panel"><p style="margin:0">Play a quiz or some flashcards, and this page will show where you’re doing well and where to spend more time. There’s nothing here yet — that’s all right, you can start with any topic.</p></div>`;
+    html+=progMarriageHTML();
+    html+=`<p class="small legend"><b>How groups work:</b> Each topic is scored from your last few tries, with newer answers counting more. <span class="badge st">Strong</span> about 85%+ recent accuracy, practiced in the last 7 days, and most of the questions tried. <span class="badge low">Struggling</span> under 60% recent accuracy, or more than half of the tried questions missed lately. <span class="badge mix">Needs more practice</span> mixed results, or not enough of the topic tried yet. <span class="badge ns">Not practiced yet / Ignored</span> never tried, or not practiced in 7 or more days.</p>`;
+  }else{
+    html+=PROG_GROUPS.map(g=>progGroupHTML(g,topics)).join("");
+    html+=`<div class="panel"><h3 style="margin-top:0">❗ Most missed</h3>
+      ${missed.length?missed.map(q=>progQRow(q)).join("")+`<button class="btn g" data-prog-qs="${progNums(missed).join(",")}" data-prog-label="❗ Most missed" style="width:100%;margin-top:8px">▶ Practice these</button>`:`<p class="small">No misses yet.</p>`}</div>`;
+    html+=`<div class="panel"><h3 style="margin-top:0">🆕 Never tried</h3>
+      ${unseen.length?`<p class="small">${unseen.length} question${unseen.length===1?"":"s"} you haven’t answered in a game or quiz yet.</p>`+unseenShow.map(q=>progQRow(q,"🆕")).join("")+(unseen.length>unseenShow.length?`<p class="small">…and ${unseen.length-unseenShow.length} more.</p>`:"")+`<button class="btn g" data-prog-qs="${progNums(unseen).join(",")}" data-prog-label="🆕 Never tried" style="width:100%;margin-top:8px">▶ Practice these</button>`:`<p class="small">You’ve tried every civics question at least once.</p>`}</div>`;
+    html+=progMarriageHTML();
+    html+=`<p class="small legend"><b>How groups work:</b> Each topic is scored from your last few tries, with newer answers counting more. <span class="badge st">Strong</span> about 85%+ recent accuracy, practiced in the last 7 days, and most of the questions tried. <span class="badge low">Struggling</span> under 60% recent accuracy, or more than half of the tried questions missed lately. <span class="badge mix">Needs more practice</span> mixed results, or not enough of the topic tried yet. <span class="badge ns">Not practiced yet / Ignored</span> never tried, or not practiced in 7 or more days.</p>`;
+  }
+  el.innerHTML=html;
+}
+document.addEventListener("click",e=>{
+  const b=e.target.closest("[data-prog-qs]");
+  if(b){const nums=String(b.dataset.progQs||"").split(",").map(n=>+n).filter(Boolean);progPractice(nums,b.dataset.progLabel||"📈 My progress");return;}
+  const c=e.target.closest("[data-prog-couple]");
+  if(c){const ids=String(c.dataset.progCouple||"").split(",").filter(Boolean);startCouplePractice(ids,c.dataset.progLabel||"💑 Marriage practice");}
+});
+function updateProgHome(){const el=$("#progSub");if(!el)return;try{
+  const topics=progTopics();const nLow=topics.filter(c=>c.st==="low").length,nMix=topics.filter(c=>c.st==="mix").length,nNs=topics.filter(c=>c.st==="ns"&&c.seen).length,nNew=topics.filter(c=>c.st==="ns"&&!c.seen).length;
+  const bits=[];if(nLow)bits.push(nLow+" struggling");if(nMix)bits.push(nMix+" need more practice");if(nNs)bits.push(nNs+" left aside");if(nNew)bits.push(nNew+" not started");
+  el.textContent=bits.length?bits.join(" · "):"See where you’re strong and what needs more attention";
+}catch(e){}}
+
 // ---------- keyboard ----------
 document.addEventListener("keydown",e=>{if(e.target.matches("input,textarea,select"))return;const on=document.querySelector(".view.on").id;
   if(on==="v-flash"){if(typeof sessInReview==="function"&&sessInReview()){if(e.key==="ArrowLeft"){e.preventDefault();sessBack();}if(e.key==="ArrowRight"){e.preventDefault();sessForward();}return;}if(e.key===" "){e.preventDefault();flipFlash();}if(e.key==="ArrowRight")flashAnswer(true);if(e.key==="ArrowLeft")flashAnswer(false);}
@@ -2439,7 +2690,8 @@ window.__civics={count:DATA.length,DATA,S:()=>S,SUGGESTED,GROUPS,COUPLE,myPicks,
 if(typeof cloudBoot==="function"){window.__civics.cloud={CLOUD:()=>CLOUD,cloudBuild,cloudMergePayload,cloudApply,cloudStamp,cloudNewCode,cloudNormCode,cloudCodeValid,cloudDocId,cloudSeal,cloudOpen,cloudSyncNow,cloudExists,cloudTurnOff,cloudFb};cloudBoot();}
 if(typeof planInfo==="function"){window.__civics.planInfo=planInfo;window.__civics.weakOrMissed=weakOrMissed;window.__civics.nowDate=nowDate;}
 if(typeof askAiOpen==="function"){window.__civics.askAi={ASKAI:()=>ASKAI,ASKAI_CHATS,ASKAI_MODEL,askAiOpen,askAiClose,askAiSend,askAiBtn,askAiAvailable};}
-const START=["flash","quiz","mock","review","list","mine","speak","report","groups","choose","marriage","couplecats","couplequiz","coupledocs","coupletips","couplechanges","couplesources","couplenotice","home"];
+if(typeof renderProgress==="function"){window.__civics.progress={renderProgress,progTopics,progQStat,progAttempts,progWeighted,coupleTopicStats,coupleMarkSeen};}
+const START=["flash","quiz","mock","review","list","mine","speak","report","groups","progress","choose","marriage","couplecats","couplequiz","coupledocs","coupletips","couplechanges","couplesources","couplenotice","home"];
 const rawHash=location.hash.slice(1);
 const incomingSync=rawHash.startsWith("sync=")?rawHash.slice(5):null;
 const h=incomingSync?"":rawHash;
