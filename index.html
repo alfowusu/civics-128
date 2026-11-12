@@ -2227,7 +2227,7 @@ const ASKAI_MODEL="gemini-3.5-flash-lite";
 const ASKAI_RPM=6;
 const ASKAI_WINDOW_MS=60000;
 const ASKAI_CHATS={}; // in-memory only; never written to S, civics128.v1, or the cloud payload
-let ASKAI={open:false,key:"",kind:"",ctx:null,sending:false,times:[],ai:null,busyMsg:"",lastErr:"",draft:"",queue:[],streamText:""};
+let ASKAI={open:false,key:"",kind:"",ctx:null,sending:false,times:[],ai:null,busyMsg:"",lastErr:"",draft:"",queue:[],streamText:"",pending:""};
 function askAiBtn(kind,id){return `<button type="button" class="askai-btn" data-ask-ai="${kind}:${esc(String(id))}" aria-label="Ask AI about this question">✨ Ask AI</button>`;}
 function askAiAvailable(){return !!(typeof CLOUD_CFG!=="undefined"&&CLOUD_CFG&&CLOUD_CFG.apiKey);}
 function askAiOnline(){return typeof navigator==="undefined"||navigator.onLine!==false;}
@@ -2257,6 +2257,8 @@ Rules you must follow:
 - Write in short, plain English. A few short paragraphs at most. No bullet-wall or legal jargon.
 - Start directly with the answer. No greetings (no "Hello", "Hi there"), no praise or cheerleading (no "Great question", "You're doing fantastic"), and no sign-off. Talk like a knowledgeable friend, not a cheerleader.
 - Memory tips should be quirky, fun, and easy to remember — like a little joke or word play. Keep them respectful.
+- When the official answer is a list (for example the wars the United States fought in the 1800s), memory tips should tie the actual items together so the whole list is easier to recall, not only one item.
+- If the applicant says a tip or explanation is not good enough, or asks you to try again, do not repeat the same wording and do not re-list the official answers. Offer a clearly different approach: a different mnemonic style, a short story, an acronym, or a vivid image tied to the real history. Keep it short.
 - Do not discuss immigration case strategy, and do not claim to be USCIS.`;
   return `You are a clear, friendly practice coach for a USCIS combo interview: the marriage questions on the joint I-751 (removing conditions on residence) plus naturalization (N-400). Two spouses will attend together.
 
@@ -2271,7 +2273,8 @@ Rules you must follow:
 - These practice prompts come from public interview recaps and official N-400 topics. They are study tools, not an official list and not legal advice. Say so if asked.
 - Write in short, plain English. A few short paragraphs at most.
 - Start directly with the answer. No greetings (no "Hello", "Hi there"), no praise or cheerleading (no "Great question", "You're doing fantastic"), and no sign-off. Talk like a knowledgeable friend, not a cheerleader.
-- Memory tips should be quirky, fun, and easy to remember, and must be based only on what they actually told you.`;}
+- Memory tips should be quirky, fun, and easy to remember, and must be based only on what they actually told you.
+- If they say a tip or explanation is not good enough, or ask you to try again, do not repeat the same wording. Offer a clearly different approach and keep it short, still using only facts they have actually told you.`;}
 function askAiChips(kind){return kind==="m"?[
   ["Quiz me like an officer","Quiz me like an officer would. Ask one question at a time and wait for my answer."],
   ["Help me phrase an honest answer","Help me phrase an honest answer to this question. Do not invent any facts I have not told you."],
@@ -2352,7 +2355,7 @@ function askAiRender(){const prev=$("#askaiInput");if(prev)ASKAI.draft=prev.valu
     </form>
   </div>`;
   $("#askaiClose").onclick=()=>askAiClose();
-  const form=$("#askaiForm");if(form)form.onsubmit=e=>{e.preventDefault();const inp=$("#askaiInput");askAiSend(inp?inp.value:"");};
+  const form=$("#askaiForm");if(form)form.onsubmit=e=>{e.preventDefault();e.stopPropagation();const inp=$("#askaiInput");const v=inp?inp.value:"";askAiSend(v);};
   m.querySelectorAll("[data-ask-chip]").forEach(b=>b.onclick=()=>askAiSend(askAiChips(ctx.kind)[+b.dataset.askChip][1]));
   m.querySelectorAll("[data-ask-speak]").forEach(b=>b.onclick=e=>{e.preventDefault();e.stopPropagation();const msg=sess.msgs[+b.dataset.askSpeak];if(msg&&msg.role==="model")askAiSpeak(msg.text);});
   const thread=$("#askaiThread");if(thread)thread.scrollTop=thread.scrollHeight;
@@ -2368,10 +2371,28 @@ function askAiSleep(ms){return new Promise(r=>setTimeout(r,ms));}
 function askAiTransient(msg){const s=String(msg||"");
   if(/429|resource.exhausted|quota|rate.?limit|permission|403|restricted|API_KEY|referer|referrer|unauth|API_KEY_SERVICE_BLOCKED|are blocked|empty|no-config/i.test(s))return false;
   return /Load failed|Failed to fetch|network connection was lost|The Internet connection appears to be offline|cancelled|canceled|unavailable|timeout|Timeout has expired|PARSE_FAILED|Failed to parse stream|Error parsing JSON|\b5\d\d\b|internal error|INTERNAL|service unavailable|bad gateway/i.test(s);}
+function askAiClearComposer(){ASKAI.draft="";const inp=$("#askaiInput");if(inp)inp.value="";}
+function askAiHistory(sess){
+  const prior=(sess&&sess.msgs||[]).filter(x=>x&&x.text).slice(0,-1).slice(-12);
+  const start=prior.findIndex(x=>x.role==="user");
+  const used=start<0?[]:prior.slice(start);
+  const out=[];
+  for(const x of used){
+    const role=x.role==="user"?"user":"model";
+    if(out.length&&out[out.length-1].role===role)continue;
+    out.push({role,parts:[{text:x.text}]});
+  }
+  if(out.length&&out[out.length-1].role!=="model")out.pop();
+  return out;}
 function askAiMakeChat(svc,sess){
-  const model=svc.aiM.getGenerativeModel(svc.ai,{model:ASKAI_MODEL,systemInstruction:askAiSystem(ASKAI.ctx),generationConfig:{maxOutputTokens:450,temperature:.7}});
-  const history=sess.msgs.slice(0,-1).filter(x=>x.text).map(x=>({role:x.role==="user"?"user":"model",parts:[{text:x.text}]}));
+  const model=svc.aiM.getGenerativeModel(svc.ai,{model:ASKAI_MODEL,systemInstruction:askAiSystem(ASKAI.ctx),generationConfig:{maxOutputTokens:450,temperature:.9}});
+  const history=askAiHistory(sess);
   return history.length?model.startChat({history}):model.startChat();}
+function askAiEnqueue(text){
+  ASKAI.queue=ASKAI.queue||[];
+  if(ASKAI.pending&&text===ASKAI.pending)return false;
+  if(ASKAI.queue.length&&ASKAI.queue[ASKAI.queue.length-1]===text)return false;
+  ASKAI.queue.push(text);return true;}
 function askAiChunkText(chunk){if(!chunk)return"";
   try{if(typeof chunk.text==="function")return chunk.text()||"";}catch(e){}
   return chunk.text||"";}
@@ -2413,13 +2434,14 @@ async function askAiWithRetry(svc,sess,text){
       ASKAI.streamText="";}
   }
   throw last||new Error("empty");}
-async function askAiFlushQueue(){if(ASKAI.sending)return;const next=(ASKAI.queue||[]).shift();if(next)askAiSend(next);}
+async function askAiFlushQueue(){if(ASKAI.sending)return;const next=(ASKAI.queue||[]).shift();if(next)return askAiSend(next);}
 async function askAiSend(raw){const text=String(raw||"").trim();if(!text||!ASKAI.ctx)return;
-  if(ASKAI.sending){ASKAI.queue.push(text);ASKAI.draft="";const inp=$("#askaiInput");if(inp)inp.value="";return;}
+  if(ASKAI.sending){askAiEnqueue(text);askAiClearComposer();return;}
   if(!askAiOnline()){ASKAI.busyMsg="Ask AI needs internet. Everything else in the app still works offline.";askAiRender();return;}
   if(!askAiRateOk()){ASKAI.busyMsg=askAiRateWait();askAiRender();return;}
-  const sess=askAiSession(ASKAI.key);sess.msgs.push({role:"user",text});ASKAI.sending=true;ASKAI.busyMsg="";ASKAI.lastErr="";ASKAI.streamText="";
-  if((ASKAI.draft||"").trim()===text)ASKAI.draft="";
+  askAiClearComposer();
+  const sess=askAiSession(ASKAI.key);sess.msgs.push({role:"user",text});
+  ASKAI.sending=true;ASKAI.pending=text;ASKAI.busyMsg="";ASKAI.lastErr="";ASKAI.streamText="";
   askAiRender();
   try{const svc=await askAiEnsure();
     ASKAI.times.push(Date.now());
@@ -2433,7 +2455,7 @@ async function askAiSend(raw){const text=String(raw||"").trim();if(!text||!ASKAI
     else if(/permission|403|restricted|API_KEY|referer|referrer|unauth|API_KEY_SERVICE_BLOCKED|are blocked/i.test(msg))ASKAI.busyMsg="Ask AI couldn’t start right now. Try again in a minute.";
     else if(!askAiOnline())ASKAI.busyMsg="Ask AI needs internet. Everything else in the app still works offline.";
     else ASKAI.busyMsg="I couldn’t get an answer just then. Please try again.";}
-  finally{ASKAI.sending=false;askAiRender();askAiFlushQueue();}}
+  finally{ASKAI.sending=false;ASKAI.pending="";askAiRender();await askAiFlushQueue();}}
 document.addEventListener("click",e=>{
   const b=e.target.closest("[data-ask-ai]");
   if(!b)return;e.preventDefault();e.stopPropagation();askAiOpen(b.dataset.askAi);
@@ -2689,7 +2711,7 @@ window.__civics={count:DATA.length,DATA,S:()=>S,SUGGESTED,GROUPS,COUPLE,myPicks,
   syncMerge:typeof syncMerge==="function"?syncMerge:undefined,syncPreview:typeof syncPreview==="function"?syncPreview:undefined};
 if(typeof cloudBoot==="function"){window.__civics.cloud={CLOUD:()=>CLOUD,cloudBuild,cloudMergePayload,cloudApply,cloudStamp,cloudNewCode,cloudNormCode,cloudCodeValid,cloudDocId,cloudSeal,cloudOpen,cloudSyncNow,cloudExists,cloudTurnOff,cloudFb};cloudBoot();}
 if(typeof planInfo==="function"){window.__civics.planInfo=planInfo;window.__civics.weakOrMissed=weakOrMissed;window.__civics.nowDate=nowDate;}
-if(typeof askAiOpen==="function"){window.__civics.askAi={ASKAI:()=>ASKAI,ASKAI_CHATS,ASKAI_MODEL,askAiOpen,askAiClose,askAiSend,askAiBtn,askAiAvailable};}
+if(typeof askAiOpen==="function"){window.__civics.askAi={ASKAI:()=>ASKAI,ASKAI_CHATS,ASKAI_MODEL,askAiOpen,askAiClose,askAiSend,askAiBtn,askAiAvailable,askAiHistory,askAiClearComposer,askAiEnqueue};}
 if(typeof renderProgress==="function"){window.__civics.progress={renderProgress,progTopics,progQStat,progAttempts,progWeighted,coupleTopicStats,coupleMarkSeen};}
 const START=["flash","quiz","mock","review","list","mine","speak","report","groups","progress","choose","marriage","couplecats","couplequiz","coupledocs","coupletips","couplechanges","couplesources","couplenotice","home"];
 const rawHash=location.hash.slice(1);
