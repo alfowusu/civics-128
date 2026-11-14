@@ -2251,7 +2251,11 @@ if(typeof AbortSignal!=="undefined"&&typeof AbortSignal.any!=="function"){
   AbortSignal.any=function(signals){
     const list=[].concat(signals||[]);
     const ac=new AbortController();
-    const abort=()=>{try{ac.abort();}catch(e){}};
+    const abort=()=>{
+      let reason;
+      for(const sig of list){if(sig&&sig.aborted){reason=sig.reason;break;}}
+      try{ac.abort(reason);}catch(e){try{ac.abort();}catch(x){}}
+    };
     for(const sig of list){
       if(!sig)continue;
       if(sig.aborted){abort();return ac.signal;}
@@ -2260,9 +2264,9 @@ if(typeof AbortSignal!=="undefined"&&typeof AbortSignal.any!=="function"){
     return ac.signal;
   };
 }
-const ASKAI_MODEL="gemini-3.8-flash";
+const ASKAI_MODEL="gemini-3.5-flash-lite";
 const ASKAI_FALLBACK_MODEL="gemini-3.5-flash-lite";
-const ASKAI_TIMEOUT_MS=25000;
+const ASKAI_TIMEOUT_MS=30000;
 const ASKAI_RPM=6;
 const ASKAI_WINDOW_MS=60000;
 const ASKAI_CHATS={}; // in-memory only; never written to S, civics128.v1, or the cloud payload
@@ -2426,18 +2430,30 @@ function askAiHistory(sess){
   return out;}
 function askAiGenConfig(modelName){
   const cfg={maxOutputTokens:1024,temperature:.9};
-  // 3.8 Flash always thinks; LOW keeps latency down and leaves room for the visible answer.
-  // Do not set MINIMAL on 3.8 — the API returns 400. Lite already defaults to MINIMAL.
-  if((modelName||ASKAI_MODEL)===ASKAI_MODEL)cfg.thinkingConfig={thinkingLevel:"LOW"};
+  const name=modelName||ASKAI_MODEL;
+  // Only 3.8 Flash needs an explicit low thinking level. Lite already defaults to MINIMAL.
+  // Do not set MINIMAL on 3.8 — the API returns 400.
+  if(name==="gemini-3.8-flash")cfg.thinkingConfig={thinkingLevel:"LOW"};
   return cfg;}
-function askAiRequestOpts(){return {timeout:ASKAI_TIMEOUT_MS};}
+function askAiRequestOpts(){
+  // Fresh controller + timer on every call so a timed-out first try cannot abort the fallback.
+  const ac=new AbortController();
+  const timer=setTimeout(()=>{
+    try{ac.abort(new DOMException("Timeout has expired.","TimeoutError"));}
+    catch(e){try{ac.abort();}catch(x){}}
+  }, ASKAI_TIMEOUT_MS);
+  const opts={timeout:ASKAI_TIMEOUT_MS, signal:ac.signal};
+  opts.clear=()=>clearTimeout(timer);
+  return opts;}
 function askAiMakeChat(svc,sess,modelName){
-  const model=svc.aiM.getGenerativeModel(svc.ai,{model:modelName||ASKAI_MODEL,systemInstruction:askAiSystem(ASKAI.ctx),generationConfig:askAiGenConfig(modelName)},askAiRequestOpts());
+  // Do not attach requestOptions here: a timeout/signal on the model would be reused
+  // by later sendMessage calls, including the fallback.
+  const model=svc.aiM.getGenerativeModel(svc.ai,{model:modelName||ASKAI_MODEL,systemInstruction:askAiSystem(ASKAI.ctx),generationConfig:askAiGenConfig(modelName)});
   const history=askAiHistory(sess);
   return history.length?model.startChat({history}):model.startChat();}
 function askAiFallbackErr(msg){const s=String(msg||"");
   return /429|resource.exhausted|quota|rate.?limit|not.?found|404|NOT_FOUND|model[_\s-]?not[_\s-]?found|is not found|does not exist|unknown model|invalid model/i.test(s);}
-function askAiTimedOut(msg){return /timeout|Timeout has expired|AbortError|aborted|The operation was aborted|The user aborted a request/i.test(String(msg||""));}
+function askAiTimedOut(msg){return /timeout|Timeout has expired|AbortError|aborted|The operation was aborted|The user aborted a request|Fetch is aborted/i.test(String(msg||""));}
 function askAiEnqueue(text){
   ASKAI.queue=ASKAI.queue||[];
   if(ASKAI.pending&&text===ASKAI.pending)return false;
@@ -2446,31 +2462,16 @@ function askAiEnqueue(text){
 function askAiChunkText(chunk){if(!chunk)return"";
   try{if(typeof chunk.text==="function")return chunk.text()||"";}catch(e){}
   return chunk.text||"";}
-async function askAiStreamOnce(chat,text){
-  if(!chat||typeof chat.sendMessageStream!=="function")throw new Error("no-stream");
-  const result=await chat.sendMessageStream(text,askAiRequestOpts());
-  let reply="";
-  if(result&&result.stream){
-    for await(const chunk of result.stream){
-      const piece=askAiChunkText(chunk);
-      if(piece){reply+=piece;ASKAI.streamText=reply;askAiPatchStream();}
-    }
-  }
-  if(!reply&&result&&result.response){
-    const final=await result.response;
-    reply=(final&&typeof final.text==="function"?final.text():"")||"";
-    if(reply){ASKAI.streamText=reply;askAiPatchStream();}
-  }
-  return askAiPlain(reply);}
 async function askAiUnaryOnce(chat,text){
-  const result=await chat.sendMessage(text,askAiRequestOpts());
-  return askAiPlain((result&&result.response&&typeof result.response.text==="function"?result.response.text():"")||"");}
+  const opts=askAiRequestOpts();
+  try{
+    const result=await chat.sendMessage(text,opts);
+    return askAiPlain((result&&result.response&&typeof result.response.text==="function"?result.response.text():"")||"");
+  }finally{if(opts&&opts.clear)opts.clear();}
+}
 async function askAiOnce(svc,sess,text,modelName){
-  const streamChat=askAiMakeChat(svc,sess,modelName);
-  try{const reply=await askAiStreamOnce(streamChat,text);if(reply)return reply;}
-  catch(e){const msg=(e&&(e.message||e.code))||e;
-    // Timeouts and quota/not-found should skip unary on the same model and go to fallback.
-    if(askAiTimedOut(msg)||askAiFallbackErr(msg)||(!askAiTransient(msg)&&ASKAI.streamText))throw e;}
+  // Non-streaming only. iOS Safari often aborts fetch SSE (streamGenerateContent)
+  // with "Fetch is aborted", and treating that as a timeout used to skip unary too.
   ASKAI.streamText="";
   return askAiUnaryOnce(askAiMakeChat(svc,sess,modelName),text);}
 async function askAiWithRetry(svc,sess,text){
@@ -2480,8 +2481,7 @@ async function askAiWithRetry(svc,sess,text){
   if(ASKAI_FALLBACK_MODEL&&ASKAI_FALLBACK_MODEL!==ASKAI_MODEL)models.push(ASKAI_FALLBACK_MODEL);
   if(!models.length)models.push(ASKAI_MODEL);
   for(const modelName of models){
-    // Don't retry a hanging primary (25s each). Lite may retry a couple of quick network blips.
-    const attempts=modelName===ASKAI_MODEL?1:3;
+    const attempts=modelName===ASKAI_MODEL?1:2;
     for(let attempt=0;attempt<attempts;attempt++){
       if(attempt>0){
         if(!askAiOnline())break;
@@ -2490,12 +2490,12 @@ async function askAiWithRetry(svc,sess,text){
       try{const reply=await askAiOnce(svc,sess,text,modelName);if(!reply)throw new Error("empty");ASKAI.activeModel=modelName;return reply;}
       catch(e){last=e;const msg=String((e&&(e.message||e.code))||e||"");
         ASKAI.streamText="";
-        // Any error on the primary model (timeout, empty, 5xx, network, 429, not-found) → try lite.
+        // Any error on the primary model → try a different fallback if one is configured.
         if(modelName===ASKAI_MODEL&&ASKAI_FALLBACK_MODEL&&ASKAI_FALLBACK_MODEL!==ASKAI_MODEL){
           if(askAiFallbackErr(msg)||askAiTimedOut(msg))ASKAI.preferFallback=true;
           break;
         }
-        if(!askAiTransient(msg))throw e;}
+        if(!askAiTransient(msg)||askAiTimedOut(msg))throw e;}
     }
   }
   throw last||new Error("empty");}
@@ -2519,7 +2519,7 @@ async function askAiSend(raw){const text=String(raw||"").trim();if(!text||!ASKAI
     ASKAI.streamText="";
     ASKAI.retryText=text;
     if(/429|resource.exhausted|quota|rate.?limit/i.test(msg))ASKAI.busyMsg="The free daily questions are used up for now. Try again later today.";
-    else if(askAiTimedOut(msg))ASKAI.busyMsg="That took too long. Please try again.";
+    else if(askAiTimedOut(msg)){ASKAI.busyMsg="That took too long. Please try again.";ASKAI.lastErr="";}
     else if(/permission|403|restricted|API_KEY|referer|referrer|unauth|API_KEY_SERVICE_BLOCKED|are blocked/i.test(msg))ASKAI.busyMsg="Ask AI couldn’t start right now. Try again in a minute.";
     else if(!askAiOnline())ASKAI.busyMsg="Ask AI needs internet. Everything else in the app still works offline.";
     else ASKAI.busyMsg="I couldn’t get an answer just then. Please try again.";}
