@@ -423,6 +423,9 @@ html[data-theme=dark] .askai-btn{background:#26304d;color:#bac8ff}
 .askai-chips .chip{background:#fff;border:2px solid #d0d7f5}
 .askai-err,.askai-offnote{background:#fff4e6;border:2px solid #ffd8a8;border-radius:12px;padding:10px;margin:8px 0;font-size:.9rem}
 .askai-errdetail{margin:-2px 0 8px;padding:0 4px;font-size:.75rem;line-height:1.35;color:var(--mute);word-break:break-word}
+.askai-err p{margin:0}
+.askai-err .askai-errdetail{margin:6px 0 0;padding:0}
+.askai-retry{margin-top:8px;min-height:44px;}
 .askai-voice{font-size:.78rem;color:var(--mute);margin:4px 0 8px}
 .askai-form{display:flex;gap:8px;align-items:center}
 .askai-form .typein{flex:1;min-width:0;min-height:48px;font-size:1rem;padding:12px}
@@ -2259,10 +2262,11 @@ if(typeof AbortSignal!=="undefined"&&typeof AbortSignal.any!=="function"){
 }
 const ASKAI_MODEL="gemini-3.8-flash";
 const ASKAI_FALLBACK_MODEL="gemini-3.5-flash-lite";
+const ASKAI_TIMEOUT_MS=25000;
 const ASKAI_RPM=6;
 const ASKAI_WINDOW_MS=60000;
 const ASKAI_CHATS={}; // in-memory only; never written to S, civics128.v1, or the cloud payload
-let ASKAI={open:false,key:"",kind:"",ctx:null,sending:false,times:[],ai:null,busyMsg:"",lastErr:"",draft:"",queue:[],streamText:"",pending:"",preferFallback:false};
+let ASKAI={open:false,key:"",kind:"",ctx:null,sending:false,times:[],ai:null,busyMsg:"",lastErr:"",draft:"",queue:[],streamText:"",pending:"",preferFallback:false,retryText:""};
 function askAiBtn(kind,id){return `<button type="button" class="askai-btn" data-ask-ai="${kind}:${esc(String(id))}" aria-label="Ask AI about this question">✨ Ask AI</button>`;}
 function askAiAvailable(){return !!(typeof CLOUD_CFG!=="undefined"&&CLOUD_CFG&&CLOUD_CFG.apiKey);}
 function askAiOnline(){return typeof navigator==="undefined"||navigator.onLine!==false;}
@@ -2372,7 +2376,7 @@ function askAiRender(){const prev=$("#askaiInput");if(prev)ASKAI.draft=prev.valu
   if(ASKAI.sending)live=ASKAI.streamText
     ?`<div class="askai-msg ai"><div class="askai-bubble stream">${askAiEsc(ASKAI.streamText)}</div></div>`
     :`<div class="askai-msg ai"><div class="askai-bubble thinking">Thinking…</div></div>`;
-  const err=ASKAI.busyMsg?`<p class="askai-err">${esc(ASKAI.busyMsg)}</p>`+(ASKAI.lastErr?`<p class="askai-errdetail">${esc(ASKAI.lastErr)}</p>`:""):"";
+  const err=ASKAI.busyMsg?`<div class="askai-err"><p>${esc(ASKAI.busyMsg)}</p>`+(ASKAI.lastErr?`<p class="askai-errdetail">${esc(ASKAI.lastErr)}</p>`:"")+(ASKAI.retryText&&!ASKAI.sending?`<button type="button" class="btn askai-retry" id="askaiRetry">Try again</button>`:"")+`</div>`:"";
   const offlineNote=!online?`<div class="askai-offnote">Ask AI needs internet. Everything else in the app still works offline — open this again when you’re back online.</div>`:"";
   const chipHTML=online&&!sess.msgs.length&&!ASKAI.sending?`<div class="askai-chips">${chips.map((c,i)=>`<button type="button" class="chip" data-ask-chip="${i}">${esc(c[0])}</button>`).join("")}</div>`:"";
   m.hidden=false;
@@ -2391,6 +2395,7 @@ function askAiRender(){const prev=$("#askaiInput");if(prev)ASKAI.draft=prev.valu
   </div>`;
   $("#askaiClose").onclick=()=>askAiClose();
   const form=$("#askaiForm");if(form)form.onsubmit=e=>{e.preventDefault();e.stopPropagation();const inp=$("#askaiInput");const v=inp?inp.value:"";askAiSend(v);};
+  const retry=$("#askaiRetry");if(retry)retry.onclick=e=>{e.preventDefault();askAiSend(ASKAI.retryText);};
   m.querySelectorAll("[data-ask-chip]").forEach(b=>b.onclick=()=>askAiSend(askAiChips(ctx.kind)[+b.dataset.askChip][1]));
   m.querySelectorAll("[data-ask-speak]").forEach(b=>b.onclick=e=>{e.preventDefault();e.stopPropagation();const msg=sess.msgs[+b.dataset.askSpeak];if(msg&&msg.role==="model")askAiSpeak(msg.text);});
   const thread=$("#askaiThread");if(thread)thread.scrollTop=thread.scrollHeight;
@@ -2419,12 +2424,20 @@ function askAiHistory(sess){
   }
   if(out.length&&out[out.length-1].role!=="model")out.pop();
   return out;}
+function askAiGenConfig(modelName){
+  const cfg={maxOutputTokens:1024,temperature:.9};
+  // 3.8 Flash always thinks; LOW keeps latency down and leaves room for the visible answer.
+  // Do not set MINIMAL on 3.8 — the API returns 400. Lite already defaults to MINIMAL.
+  if((modelName||ASKAI_MODEL)===ASKAI_MODEL)cfg.thinkingConfig={thinkingLevel:"LOW"};
+  return cfg;}
+function askAiRequestOpts(){return {timeout:ASKAI_TIMEOUT_MS};}
 function askAiMakeChat(svc,sess,modelName){
-  const model=svc.aiM.getGenerativeModel(svc.ai,{model:modelName||ASKAI_MODEL,systemInstruction:askAiSystem(ASKAI.ctx),generationConfig:{maxOutputTokens:450,temperature:.9}});
+  const model=svc.aiM.getGenerativeModel(svc.ai,{model:modelName||ASKAI_MODEL,systemInstruction:askAiSystem(ASKAI.ctx),generationConfig:askAiGenConfig(modelName)},askAiRequestOpts());
   const history=askAiHistory(sess);
   return history.length?model.startChat({history}):model.startChat();}
 function askAiFallbackErr(msg){const s=String(msg||"");
   return /429|resource.exhausted|quota|rate.?limit|not.?found|404|NOT_FOUND|model[_\s-]?not[_\s-]?found|is not found|does not exist|unknown model|invalid model/i.test(s);}
+function askAiTimedOut(msg){return /timeout|Timeout has expired|AbortError|aborted|The operation was aborted|The user aborted a request/i.test(String(msg||""));}
 function askAiEnqueue(text){
   ASKAI.queue=ASKAI.queue||[];
   if(ASKAI.pending&&text===ASKAI.pending)return false;
@@ -2435,7 +2448,7 @@ function askAiChunkText(chunk){if(!chunk)return"";
   return chunk.text||"";}
 async function askAiStreamOnce(chat,text){
   if(!chat||typeof chat.sendMessageStream!=="function")throw new Error("no-stream");
-  const result=await chat.sendMessageStream(text);
+  const result=await chat.sendMessageStream(text,askAiRequestOpts());
   let reply="";
   if(result&&result.stream){
     for await(const chunk of result.stream){
@@ -2450,13 +2463,14 @@ async function askAiStreamOnce(chat,text){
   }
   return askAiPlain(reply);}
 async function askAiUnaryOnce(chat,text){
-  const result=await chat.sendMessage(text);
+  const result=await chat.sendMessage(text,askAiRequestOpts());
   return askAiPlain((result&&result.response&&typeof result.response.text==="function"?result.response.text():"")||"");}
 async function askAiOnce(svc,sess,text,modelName){
   const streamChat=askAiMakeChat(svc,sess,modelName);
   try{const reply=await askAiStreamOnce(streamChat,text);if(reply)return reply;}
   catch(e){const msg=(e&&(e.message||e.code))||e;
-    if(askAiFallbackErr(msg)||(!askAiTransient(msg)&&ASKAI.streamText))throw e;}
+    // Timeouts and quota/not-found should skip unary on the same model and go to fallback.
+    if(askAiTimedOut(msg)||askAiFallbackErr(msg)||(!askAiTransient(msg)&&ASKAI.streamText))throw e;}
   ASKAI.streamText="";
   return askAiUnaryOnce(askAiMakeChat(svc,sess,modelName),text);}
 async function askAiWithRetry(svc,sess,text){
@@ -2466,19 +2480,26 @@ async function askAiWithRetry(svc,sess,text){
   if(ASKAI_FALLBACK_MODEL&&ASKAI_FALLBACK_MODEL!==ASKAI_MODEL)models.push(ASKAI_FALLBACK_MODEL);
   if(!models.length)models.push(ASKAI_MODEL);
   for(const modelName of models){
-    for(let attempt=0;attempt<3;attempt++){
+    // Don't retry a hanging primary (25s each). Lite may retry a couple of quick network blips.
+    const attempts=modelName===ASKAI_MODEL?1:3;
+    for(let attempt=0;attempt<attempts;attempt++){
       if(attempt>0){
         if(!askAiOnline())break;
         await askAiSleep(400*Math.pow(2,attempt-1));
       }
       try{const reply=await askAiOnce(svc,sess,text,modelName);if(!reply)throw new Error("empty");ASKAI.activeModel=modelName;return reply;}
       catch(e){last=e;const msg=String((e&&(e.message||e.code))||e||"");
-        if(askAiFallbackErr(msg)&&modelName===ASKAI_MODEL){ASKAI.preferFallback=true;ASKAI.streamText="";break;}
-        if(!askAiTransient(msg))throw e;
-        ASKAI.streamText="";}
+        ASKAI.streamText="";
+        // Any error on the primary model (timeout, empty, 5xx, network, 429, not-found) → try lite.
+        if(modelName===ASKAI_MODEL&&ASKAI_FALLBACK_MODEL&&ASKAI_FALLBACK_MODEL!==ASKAI_MODEL){
+          if(askAiFallbackErr(msg)||askAiTimedOut(msg))ASKAI.preferFallback=true;
+          break;
+        }
+        if(!askAiTransient(msg))throw e;}
     }
   }
   throw last||new Error("empty");}
+
 async function askAiFlushQueue(){if(ASKAI.sending)return;const next=(ASKAI.queue||[]).shift();if(next)return askAiSend(next);}
 async function askAiSend(raw){const text=String(raw||"").trim();if(!text||!ASKAI.ctx)return;
   if(ASKAI.sending){askAiEnqueue(text);askAiClearComposer();return;}
@@ -2486,21 +2507,23 @@ async function askAiSend(raw){const text=String(raw||"").trim();if(!text||!ASKAI
   if(!askAiRateOk()){ASKAI.busyMsg=askAiRateWait();askAiRender();return;}
   askAiClearComposer();
   const sess=askAiSession(ASKAI.key);sess.msgs.push({role:"user",text});
-  ASKAI.sending=true;ASKAI.pending=text;ASKAI.busyMsg="";ASKAI.lastErr="";ASKAI.streamText="";
+  ASKAI.sending=true;ASKAI.pending=text;ASKAI.busyMsg="";ASKAI.lastErr="";ASKAI.streamText="";ASKAI.retryText="";
   askAiRender();
   try{const svc=await askAiEnsure();
     ASKAI.times.push(Date.now());
     const reply=await askAiWithRetry(svc,sess,text);
-    sess.msgs.push({role:"model",text:reply});ASKAI.busyMsg="";ASKAI.lastErr="";ASKAI.streamText="";}
+    sess.msgs.push({role:"model",text:reply});ASKAI.busyMsg="";ASKAI.lastErr="";ASKAI.streamText="";ASKAI.retryText="";}
   catch(e){console.warn("ask ai failed",e);sess.msgs.pop();
     const msg=String((e&&(e.message||e.code))||e||"");
     ASKAI.lastErr=msg.replace(/AIza[0-9A-Za-z_-]+/g,"[key]").slice(0,240);
     ASKAI.streamText="";
+    ASKAI.retryText=text;
     if(/429|resource.exhausted|quota|rate.?limit/i.test(msg))ASKAI.busyMsg="The free daily questions are used up for now. Try again later today.";
+    else if(askAiTimedOut(msg))ASKAI.busyMsg="That took too long. Please try again.";
     else if(/permission|403|restricted|API_KEY|referer|referrer|unauth|API_KEY_SERVICE_BLOCKED|are blocked/i.test(msg))ASKAI.busyMsg="Ask AI couldn’t start right now. Try again in a minute.";
     else if(!askAiOnline())ASKAI.busyMsg="Ask AI needs internet. Everything else in the app still works offline.";
     else ASKAI.busyMsg="I couldn’t get an answer just then. Please try again.";}
-  finally{ASKAI.sending=false;ASKAI.pending="";askAiRender();await askAiFlushQueue();}}
+  finally{ASKAI.sending=false;ASKAI.pending="";ASKAI.streamText="";askAiRender();await askAiFlushQueue();}}
 document.addEventListener("click",e=>{
   const b=e.target.closest("[data-ask-ai]");
   if(!b)return;e.preventDefault();e.stopPropagation();askAiOpen(b.dataset.askAi);
@@ -2756,7 +2779,7 @@ window.__civics={count:DATA.length,DATA,S:()=>S,SUGGESTED,GROUPS,COUPLE,myPicks,
   syncMerge:typeof syncMerge==="function"?syncMerge:undefined,syncPreview:typeof syncPreview==="function"?syncPreview:undefined};
 if(typeof cloudBoot==="function"){window.__civics.cloud={CLOUD:()=>CLOUD,cloudBuild,cloudMergePayload,cloudApply,cloudStamp,cloudNewCode,cloudNormCode,cloudCodeValid,cloudDocId,cloudSeal,cloudOpen,cloudSyncNow,cloudExists,cloudTurnOff,cloudFb};cloudBoot();}
 if(typeof planInfo==="function"){window.__civics.planInfo=planInfo;window.__civics.weakOrMissed=weakOrMissed;window.__civics.nowDate=nowDate;}
-if(typeof askAiOpen==="function"){window.__civics.askAi={ASKAI:()=>ASKAI,ASKAI_CHATS,ASKAI_MODEL,ASKAI_FALLBACK_MODEL,askAiOpen,askAiClose,askAiSend,askAiBtn,askAiAvailable,askAiHistory,askAiClearComposer,askAiEnqueue,askAiFallbackErr,askAiWithRetry};}
+if(typeof askAiOpen==="function"){window.__civics.askAi={ASKAI:()=>ASKAI,ASKAI_CHATS,ASKAI_MODEL,ASKAI_FALLBACK_MODEL,ASKAI_TIMEOUT_MS,askAiOpen,askAiClose,askAiSend,askAiBtn,askAiAvailable,askAiHistory,askAiClearComposer,askAiEnqueue,askAiFallbackErr,askAiTimedOut,askAiWithRetry,askAiRequestOpts,askAiGenConfig};}
 if(typeof renderProgress==="function"){window.__civics.progress={renderProgress,progTopics,progQStat,progAttempts,progWeighted,coupleTopicStats,coupleMarkSeen};}
 const START=["flash","quiz","mock","review","list","mine","speak","report","groups","progress","choose","marriage","couplecats","couplequiz","coupledocs","coupletips","couplechanges","couplesources","couplenotice","home"];
 const rawHash=location.hash.slice(1);
